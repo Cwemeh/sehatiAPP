@@ -1,0 +1,9 @@
+
+{
+  "name": "SeHati - Pengingat Obat Pintar",
+  "description": "Aplikasi manajemen pengingat minum obat yang intuitif dengan fitur pelacakan stok, riwayat kesehatan, dan mode lansia untuk aksesibilitas tinggi.",
+  "requestFramePermissions": [
+    "notifications",
+    "vibrate"
+  ]
+}
