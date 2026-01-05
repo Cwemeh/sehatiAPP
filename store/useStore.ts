@@ -98,7 +98,8 @@ export const useStore = create<State & Actions>()(
           dosage: med.dosage,
         };
 
-        const today = new Date().toISOString().split("T")[0];
+        // Gunakan waktu lokal (YYYY-MM-DD) agar jadwal harian akurat sesuai zona waktu user
+        const today = new Date().toLocaleDateString("en-CA");
 
         set((state) => ({
           medications: state.medications.map((m) =>
@@ -205,14 +206,13 @@ export const useStore = create<State & Actions>()(
 
           if (medications && medications.length > 0) {
             // Jika restore berhasil dari ID manual, update ID lokal kita
+            let newSettings = get().settings;
             if (targetUserId && targetUserId !== get().settings.userId) {
-              set((state) => ({
-                settings: {
-                  ...state.settings,
-                  userId: targetUserId,
-                  isCloudSynced: true,
-                },
-              }));
+              newSettings = {
+                ...newSettings,
+                userId: targetUserId,
+                isCloudSynced: true,
+              };
             }
 
             const mappedMeds: Medication[] = medications.map(
@@ -232,21 +232,27 @@ export const useStore = create<State & Actions>()(
                 startDate: new Date((m as any).start_date).getTime(), // Pulihkan dari DB
               })
             );
-            set({ medications: mappedMeds });
 
+            let mappedHistory: MedicationHistory[] = [];
             // Restore History juga
             if (history && history.length > 0) {
-              const mappedHistory: MedicationHistory[] = history.map(
-                (h: any) => ({
-                  id: h.id,
-                  medicationId: h.medication_id,
-                  medicationName: h.medication_name,
-                  takenAt: h.taken_at,
-                  dosage: h.dosage,
-                })
-              );
-              set({ history: mappedHistory });
+              mappedHistory = history.map((h: any) => ({
+                id: h.id,
+                medicationId: h.medication_id,
+                medicationName: h.medication_name,
+                takenAt: h.taken_at,
+                dosage: h.dosage,
+              }));
             }
+
+            // Update state sekaligus dan reset jadwal harian/snooze untuk mencegah data stale dari user sebelumnya
+            set({
+              settings: newSettings,
+              medications: mappedMeds,
+              history: mappedHistory,
+              takenSchedules: [],
+              snoozedAlerts: [],
+            });
 
             return true;
           }
@@ -284,6 +290,7 @@ export const useStore = create<State & Actions>()(
           }
 
           // Sync History (BARU)
+          // Pastikan tabel 'history' di Supabase memiliki kolom 'medication_name'
           const { error: histError } = await supabaseService.syncHistory(
             state.settings.userId,
             state.history
