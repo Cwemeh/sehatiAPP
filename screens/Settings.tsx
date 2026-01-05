@@ -1,14 +1,26 @@
-
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useStore } from '../store/useStore';
-import { 
-  User, Smartphone, Heart, Bell, 
-  ShieldCheck, Cloud, RefreshCcw, 
-  Download, LogOut, CheckCircle2,
-  Moon, Sun, HelpCircle, Volume2, Database
-} from 'lucide-react';
-import { NotificationSound } from '../types';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useStore } from "../store/useStore";
+import {
+  User,
+  Smartphone,
+  Heart,
+  Bell,
+  ShieldCheck,
+  Cloud,
+  RefreshCcw,
+  Download,
+  LogOut,
+  CheckCircle2,
+  Moon,
+  Sun,
+  HelpCircle,
+  Volume2,
+  Database,
+  Copy,
+  Check,
+} from "lucide-react";
+import { NotificationSound } from "../types";
 
 export const Settings: React.FC = () => {
   const navigate = useNavigate();
@@ -18,32 +30,50 @@ export const Settings: React.FC = () => {
   const clearHistory = useStore((state) => state.clearHistory);
   const restoreFromCloud = useStore((state) => state.restoreFromCloud);
   const initOneSignal = useStore((state) => state.initOneSignal);
-  
+
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(settings.userId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleCloudToggle = () => {
     updateSettings({ isCloudSynced: !settings.isCloudSynced });
   };
 
   const handleManualRestore = async () => {
-    if (!confirm(`Pulihkan data dari Supabase? Data lokal Anda akan diperbarui.`)) return;
+    if (
+      !confirm(`Pulihkan data dari Supabase? Data lokal Anda akan diperbarui.`)
+    )
+      return;
     await restoreFromCloud();
-    alert('Data berhasil dipulihkan!');
+    alert("Data berhasil dipulihkan!");
   };
 
-  const soundOptions: { id: NotificationSound; label: string; desc: string }[] = [
-    { id: 'gentle', label: 'Lembut', desc: 'Nada halus untuk ketenangan.' },
-    { id: 'urgent', label: 'Tegas', desc: 'Nada kuat untuk kepatuhan.' },
-    { id: 'silent', label: 'Bisu', desc: 'Hanya notifikasi visual.' }
-  ];
+  const soundOptions: { id: NotificationSound; label: string; desc: string }[] =
+    [
+      { id: "gentle", label: "Lembut", desc: "Nada halus untuk ketenangan." },
+      { id: "urgent", label: "Tegas", desc: "Nada kuat untuk kepatuhan." },
+      { id: "silent", label: "Bisu", desc: "Hanya notifikasi visual." },
+    ];
 
   return (
     <div className="px-6 py-6 space-y-10 pb-32 animate-in fade-in duration-500">
-      
       <header className="flex justify-between items-start">
         <div>
-          <h2 className="text-3xl font-black text-slate-900 dark:text-white leading-tight">Setelan</h2>
-          <p className="text-slate-500 font-medium text-sm">Pusat kontrol SeHati.</p>
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white leading-tight">
+            Setelan
+          </h2>
+          <p className="text-slate-500 font-medium text-sm">
+            Pusat kontrol SeHati.
+          </p>
         </div>
-        <button onClick={() => navigate('/help')} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-400">
+        <button
+          onClick={() => navigate("/help")}
+          className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-400"
+        >
           <HelpCircle size={20} />
         </button>
       </header>
@@ -55,12 +85,14 @@ export const Settings: React.FC = () => {
               <User size={32} strokeWidth={2.5} />
             </div>
             <div className="flex-1">
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Nama Panggilan</label>
-              <input 
-                type="text" 
-                value={settings.name} 
-                onChange={e => updateSettings({ name: e.target.value })}
-                className="w-full bg-transparent border-none p-0 text-slate-900 dark:text-white font-black text-xl focus:ring-0" 
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">
+                Nama Panggilan
+              </label>
+              <input
+                type="text"
+                value={settings.name}
+                onChange={(e) => updateSettings({ name: e.target.value })}
+                className="w-full bg-transparent border-none p-0 text-slate-900 dark:text-white font-black text-xl focus:ring-0"
               />
             </div>
           </div>
@@ -72,16 +104,36 @@ export const Settings: React.FC = () => {
           </h3>
           <div className="bg-white dark:bg-slate-800 rounded-[32px] border-2 border-slate-50 dark:border-slate-800 overflow-hidden shadow-sm">
             {soundOptions.map((option, idx) => (
-              <button 
+              <button
                 key={option.id}
                 onClick={() => updateSettings({ notificationSound: option.id })}
-                className={`w-full p-5 flex items-center justify-between transition-all ${idx !== soundOptions.length - 1 ? 'border-b border-slate-50 dark:border-slate-800' : ''} ${settings.notificationSound === option.id ? 'bg-rose-50/50 dark:bg-rose-500/5' : ''}`}
+                className={`w-full p-5 flex items-center justify-between transition-all ${
+                  idx !== soundOptions.length - 1
+                    ? "border-b border-slate-50 dark:border-slate-800"
+                    : ""
+                } ${
+                  settings.notificationSound === option.id
+                    ? "bg-rose-50/50 dark:bg-rose-500/5"
+                    : ""
+                }`}
               >
                 <div className="text-left">
-                  <p className={`font-black text-sm ${settings.notificationSound === option.id ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}>{option.label}</p>
-                  <p className="text-[10px] font-medium text-slate-400">{option.desc}</p>
+                  <p
+                    className={`font-black text-sm ${
+                      settings.notificationSound === option.id
+                        ? "text-rose-500"
+                        : "text-slate-900 dark:text-white"
+                    }`}
+                  >
+                    {option.label}
+                  </p>
+                  <p className="text-[10px] font-medium text-slate-400">
+                    {option.desc}
+                  </p>
                 </div>
-                {settings.notificationSound === option.id && <CheckCircle2 size={20} className="text-rose-500" />}
+                {settings.notificationSound === option.id && (
+                  <CheckCircle2 size={20} className="text-rose-500" />
+                )}
               </button>
             ))}
           </div>
@@ -90,46 +142,110 @@ export const Settings: React.FC = () => {
         <section className="space-y-4">
           <div className="flex items-center justify-between px-2">
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-              <Database size={14} className="text-blue-500" /> Sinkronisasi Supabase
+              <Database size={14} className="text-blue-500" /> Sinkronisasi
+              Supabase
             </h3>
             {isSyncing && (
               <div className="flex items-center gap-1.5 animate-pulse">
                 <RefreshCcw size={10} className="text-blue-500 animate-spin" />
-                <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">Sinkron...</span>
+                <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">
+                  Sinkron...
+                </span>
               </div>
             )}
           </div>
-          
-          <div className={`rounded-[40px] p-6 border-2 transition-all duration-500 ${
-            settings.isCloudSynced 
-            ? 'bg-blue-600 text-white border-blue-400 shadow-xl' 
-            : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-800 shadow-sm'
-          }`}>
+
+          <div
+            className={`rounded-[40px] p-6 border-2 transition-all duration-500 ${
+              settings.isCloudSynced
+                ? "bg-blue-600 text-white border-blue-400 shadow-xl"
+                : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-800 shadow-sm"
+            }`}
+          >
             <div className="space-y-6">
               <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
-                  settings.isCloudSynced ? 'bg-white/20 text-white' : 'bg-blue-50 dark:bg-blue-500/10 text-blue-500'
-                }`}>
+                <div
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
+                    settings.isCloudSynced
+                      ? "bg-white/20 text-white"
+                      : "bg-blue-50 dark:bg-blue-500/10 text-blue-500"
+                  }`}
+                >
                   <Cloud size={32} strokeWidth={2.5} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`font-black truncate ${settings.isCloudSynced ? 'text-white text-lg' : 'text-slate-900 dark:text-white text-lg'}`}>
-                    {settings.isCloudSynced ? 'Sinkronisasi Aktif' : 'Terputus'}
+                  <p
+                    className={`font-black truncate ${
+                      settings.isCloudSynced
+                        ? "text-white text-lg"
+                        : "text-slate-900 dark:text-white text-lg"
+                    }`}
+                  >
+                    {settings.isCloudSynced ? "Sinkronisasi Aktif" : "Terputus"}
                   </p>
-                  <p className={`text-xs font-medium leading-tight ${settings.isCloudSynced ? 'text-blue-100' : 'text-slate-500'}`}>
-                    {settings.isCloudSynced 
-                      ? `Terakhir sinkron: ${settings.lastSyncedAt ? new Date(settings.lastSyncedAt).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) : 'Baru saja'}` 
-                      : 'Aktifkan untuk menyimpan data di database Supabase.'}
+                  <p
+                    className={`text-xs font-medium leading-tight ${
+                      settings.isCloudSynced
+                        ? "text-blue-100"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    {settings.isCloudSynced
+                      ? `Terakhir sinkron: ${
+                          settings.lastSyncedAt
+                            ? new Date(
+                                settings.lastSyncedAt
+                              ).toLocaleTimeString("id-ID", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "Baru saja"
+                        }`
+                      : "Aktifkan untuk menyimpan data di database Supabase."}
                   </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={settings.isCloudSynced} onChange={handleCloudToggle} className="sr-only peer" />
-                  <div className={`w-11 h-6 rounded-full peer transition-all ${settings.isCloudSynced ? 'bg-white/40' : 'bg-slate-200 dark:bg-slate-700'} after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full`}></div>
+                  <input
+                    type="checkbox"
+                    checked={settings.isCloudSynced}
+                    onChange={handleCloudToggle}
+                    className="sr-only peer"
+                  />
+                  <div
+                    className={`w-11 h-6 rounded-full peer transition-all ${
+                      settings.isCloudSynced
+                        ? "bg-white/40"
+                        : "bg-slate-200 dark:bg-slate-700"
+                    } after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full`}
+                  ></div>
                 </label>
               </div>
 
               {settings.isCloudSynced && (
-                <button 
+                <div className="bg-white/10 rounded-2xl p-4 space-y-2 border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-white/80 uppercase tracking-widest">
+                      ID Pemulihan (Simpan Ini)
+                    </span>
+                    <button
+                      onClick={handleCopyId}
+                      className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-white transition-colors"
+                    >
+                      {copied ? <Check size={14} /> : <Copy size={14} />}
+                    </button>
+                  </div>
+                  <code className="block w-full bg-black/20 rounded-lg p-2 text-[10px] font-mono text-white break-all select-all">
+                    {settings.userId}
+                  </code>
+                  <p className="text-[9px] text-white/60 leading-tight">
+                    Gunakan ID ini di halaman awal untuk memulihkan data di
+                    perangkat baru.
+                  </p>
+                </div>
+              )}
+
+              {settings.isCloudSynced && (
+                <button
                   onClick={handleManualRestore}
                   className="w-full py-4 bg-white text-blue-600 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg"
                 >
@@ -146,43 +262,86 @@ export const Settings: React.FC = () => {
           </h3>
           <div className="bg-white dark:bg-slate-800 rounded-[32px] p-6 border-2 border-slate-50 dark:border-slate-800 shadow-sm flex items-center justify-between">
             <div className="flex items-center gap-4">
-               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${settings.pushToken ? 'bg-emerald-50 text-emerald-500' : 'bg-slate-50 text-slate-400'}`}>
-                  {settings.pushToken ? <CheckCircle2 size={20} /> : <Bell size={20} />}
-               </div>
-               <div>
-                  <p className="font-black text-slate-900 dark:text-white text-sm">{settings.pushToken ? 'Aktif' : 'Belum Aktif'}</p>
-                  <p className="text-[10px] font-medium text-slate-400">{settings.pushToken ? 'Siap menerima alarm latar belakang.' : 'Butuh izin untuk notifikasi push.'}</p>
-               </div>
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  settings.pushToken
+                    ? "bg-emerald-50 text-emerald-500"
+                    : "bg-slate-50 text-slate-400"
+                }`}
+              >
+                {settings.pushToken ? (
+                  <CheckCircle2 size={20} />
+                ) : (
+                  <Bell size={20} />
+                )}
+              </div>
+              <div>
+                <p className="font-black text-slate-900 dark:text-white text-sm">
+                  {settings.pushToken ? "Aktif" : "Belum Aktif"}
+                </p>
+                <p className="text-[10px] font-medium text-slate-400">
+                  {settings.pushToken
+                    ? "Siap menerima alarm latar belakang."
+                    : "Butuh izin untuk notifikasi push."}
+                </p>
+              </div>
             </div>
             {!settings.pushToken && (
-               <button onClick={initOneSignal} className="px-4 py-2 bg-rose-500 text-white rounded-xl font-black text-[10px] uppercase shadow-md active:scale-95 transition-all">AKTIFKAN</button>
+              <button
+                onClick={initOneSignal}
+                className="px-4 py-2 bg-rose-500 text-white rounded-xl font-black text-[10px] uppercase shadow-md active:scale-95 transition-all"
+              >
+                AKTIFKAN
+              </button>
             )}
           </div>
         </section>
 
         <section className="space-y-4">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2">Personalisasi</h3>
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2">
+            Personalisasi
+          </h3>
           <div className="bg-white dark:bg-slate-800 rounded-[32px] border-2 border-slate-50 dark:border-slate-800 overflow-hidden shadow-sm">
             <div className="p-5 flex items-center justify-between border-b border-slate-50 dark:border-slate-800">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 rounded-xl flex items-center justify-center">
                   {settings.isDarkMode ? <Moon size={20} /> : <Sun size={20} />}
                 </div>
-                <p className="font-black text-slate-900 dark:text-white text-sm">Mode Gelap</p>
+                <p className="font-black text-slate-900 dark:text-white text-sm">
+                  Mode Gelap
+                </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={settings.isDarkMode} onChange={e => updateSettings({ isDarkMode: e.target.checked })} className="sr-only peer" />
+                <input
+                  type="checkbox"
+                  checked={settings.isDarkMode}
+                  onChange={(e) =>
+                    updateSettings({ isDarkMode: e.target.checked })
+                  }
+                  className="sr-only peer"
+                />
                 <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
               </label>
             </div>
 
             <div className="p-5 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-xl flex items-center justify-center"><Smartphone size={20} /></div>
-                <p className="font-black text-slate-900 dark:text-white text-sm">Mode Lansia</p>
+                <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-xl flex items-center justify-center">
+                  <Smartphone size={20} />
+                </div>
+                <p className="font-black text-slate-900 dark:text-white text-sm">
+                  Mode Lansia
+                </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={settings.isSeniorMode} onChange={e => updateSettings({ isSeniorMode: e.target.checked })} className="sr-only peer" />
+                <input
+                  type="checkbox"
+                  checked={settings.isSeniorMode}
+                  onChange={(e) =>
+                    updateSettings({ isSeniorMode: e.target.checked })
+                  }
+                  className="sr-only peer"
+                />
                 <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
               </label>
             </div>
@@ -190,15 +349,19 @@ export const Settings: React.FC = () => {
         </section>
 
         <section className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-4">
-           <button 
-             onClick={() => { if(confirm('Hapus semua riwayat pengobatan?')) clearHistory() }} 
-             className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-400"
-           >
-              Kosongkan Riwayat Lokal
-           </button>
-           <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-full">
+          <button
+            onClick={() => {
+              if (confirm("Hapus semua riwayat pengobatan?")) clearHistory();
+            }}
+            className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-400"
+          >
+            Kosongkan Riwayat Lokal
+          </button>
+          <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-full">
             <Heart size={14} className="text-rose-500 fill-current" />
-            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">SeHati Resmi v3.0 (Cloud)</span>
+            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+              SeHati Resmi v3.0 (Cloud)
+            </span>
           </div>
         </section>
       </div>

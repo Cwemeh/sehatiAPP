@@ -31,7 +31,7 @@ interface Actions {
   clearHistory: () => void;
   triggerSync: () => Promise<void>;
   initOneSignal: () => void;
-  restoreFromCloud: () => Promise<void>;
+  restoreFromCloud: (userId?: string) => Promise<boolean>;
   importData: (data: any) => void;
 }
 
@@ -193,13 +193,28 @@ export const useStore = create<State & Actions>()(
         });
       },
 
-      restoreFromCloud: async () => {
+      restoreFromCloud: async (targetUserId?: string) => {
         set({ isSyncing: true });
         try {
+          // Gunakan ID yang diinputkan (untuk restore) atau ID saat ini
+          const userIdToFetch = targetUserId || get().settings.userId;
+
           const { medications } = await supabaseService.fetchUserData(
-            get().settings.userId
+            userIdToFetch
           );
-          if (medications) {
+
+          if (medications && medications.length > 0) {
+            // Jika restore berhasil dari ID manual, update ID lokal kita
+            if (targetUserId && targetUserId !== get().settings.userId) {
+              set((state) => ({
+                settings: {
+                  ...state.settings,
+                  userId: targetUserId,
+                  isCloudSynced: true,
+                },
+              }));
+            }
+
             const mappedMeds: Medication[] = medications.map(
               (m: DBMedication) => ({
                 id: m.id,
@@ -218,9 +233,12 @@ export const useStore = create<State & Actions>()(
               })
             );
             set({ medications: mappedMeds });
+            return true;
           }
+          return false;
         } catch (e) {
           console.error("Gagal restore:", e);
+          return false;
         } finally {
           set({ isSyncing: false });
         }

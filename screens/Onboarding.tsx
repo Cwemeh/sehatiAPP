@@ -1,102 +1,127 @@
-
-import React, { useState } from 'react';
-import { useStore } from '../store/useStore';
-import { Heart, ArrowRight, User, ShieldCheck, Cloud, RefreshCcw, ChevronLeft } from 'lucide-react';
+import React, { useState } from "react";
+import { useStore } from "../store/useStore";
+import {
+  ShieldCheck,
+  CloudDownload,
+  ArrowRight,
+  Loader2,
+  Heart,
+} from "lucide-react";
 
 export const Onboarding: React.FC = () => {
   const completeOnboarding = useStore((state) => state.completeOnboarding);
   const restoreFromCloud = useStore((state) => state.restoreFromCloud);
-  const isSyncing = useStore((state) => state.isSyncing);
-  
-  const [name, setName] = useState('');
-  const [step, setStep] = useState(1); // 1: Welcome, 2: Name Input
 
-  const handleSubmitName = (e: React.FormEvent) => {
-    e.preventDefault();
+  const [name, setName] = useState("");
+  const [restoreId, setRestoreId] = useState("");
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreError, setRestoreError] = useState("");
+
+  const handleStart = () => {
     if (name.trim()) {
-      completeOnboarding(name.trim());
+      completeOnboarding(name);
     }
   };
 
-  const handleCloudRestore = async () => {
-    await restoreFromCloud();
-    // Jika data berhasil ditarik, Onboarding akan otomatis hilang karena state isOnboarded berubah di store
+  const handleRestore = async () => {
+    if (!restoreId.trim()) return;
+
+    setIsRestoring(true);
+    setRestoreError("");
+
+    const success = await restoreFromCloud(restoreId);
+
+    if (success) {
+      // Jika data ditemukan, masuk ke dashboard
+      // Kita gunakan nama default atau nama dari input jika ada
+      completeOnboarding(name || "Pengguna Kembali");
+    } else {
+      setRestoreError("Data tidak ditemukan. Periksa kembali ID Anda.");
+    }
+    setIsRestoring(false);
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 flex flex-col relative overflow-hidden">
-      <div className="absolute -top-24 -right-24 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl" />
-      <div className="absolute top-1/2 -left-32 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl" />
+    <div className="min-h-screen bg-white dark:bg-slate-900 flex flex-col items-center justify-center p-6 space-y-12 animate-in fade-in duration-700">
+      {/* Header Logo */}
+      <div className="text-center space-y-4">
+        <div className="w-24 h-24 bg-rose-500 rounded-[32px] flex items-center justify-center mx-auto shadow-xl shadow-rose-500/30 rotate-3">
+          <Heart size={48} className="text-white fill-white" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            SeHati
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">
+            Teman Sehat Disiplin Obat
+          </p>
+        </div>
+      </div>
 
-      <div className="flex-1 flex flex-col p-8 z-10">
-        {step === 1 && (
-          <div className="flex-1 flex flex-col justify-center space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            <div className="space-y-6 text-center">
-              <div className="w-24 h-24 bg-rose-500 rounded-[32px] flex items-center justify-center text-white shadow-2xl mx-auto">
-                <Heart size={48} fill="currentColor" />
-              </div>
-              <div className="space-y-3">
-                <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white leading-[1.1]">
-                  Selamat Datang di <span className="text-rose-500">SeHati.</span>
-                </h1>
-                <p className="text-slate-500 dark:text-slate-400 text-lg leading-relaxed px-4">
-                  Sahabat pintar pengingat obat Anda.
-                </p>
-              </div>
+      {/* Form Pengguna Baru */}
+      <div className="w-full max-w-sm space-y-4">
+        <div className="space-y-2">
+          <label className="text-xs font-bold uppercase tracking-widest text-slate-400">
+            Nama Panggilan
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Contoh: Budi"
+            className="w-full bg-slate-100 dark:bg-slate-800 border-0 rounded-2xl px-5 py-4 font-bold text-lg focus:ring-2 focus:ring-rose-500 transition-all dark:text-white"
+          />
+        </div>
+        <button
+          onClick={handleStart}
+          disabled={!name.trim()}
+          className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl py-4 font-bold text-lg shadow-lg shadow-rose-500/30 flex items-center justify-center gap-2 transition-all active:scale-95"
+        >
+          Mulai Sekarang <ArrowRight size={20} strokeWidth={3} />
+        </button>
+      </div>
+
+      {/* Bagian Restore Data (Pengganti Google Drive) */}
+      <div className="w-full max-w-sm pt-8 border-t border-slate-100 dark:border-slate-800">
+        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-3xl p-6 space-y-4 border border-slate-100 dark:border-slate-700/50">
+          <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl">
+              <CloudDownload size={20} />
             </div>
-            <div className="space-y-4">
-              <button onClick={() => setStep(2)} className="w-full py-5 bg-slate-900 dark:bg-rose-500 text-white rounded-3xl font-black text-lg shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
-                Mulai Sebagai Baru <ArrowRight size={22} />
-              </button>
-              <div className="relative py-4">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100 dark:border-slate-800"></div></div>
-                <div className="relative flex justify-center text-xs uppercase tracking-widest font-black text-slate-300 bg-white dark:bg-slate-900 px-4">Atau</div>
-              </div>
-              <button 
-                onClick={handleCloudRestore} 
-                disabled={isSyncing}
-                className="w-full py-5 bg-blue-500 text-white rounded-3xl font-black text-lg shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
-              >
-                {isSyncing ? <RefreshCcw size={22} className="animate-spin" /> : <><Cloud size={22} /> Pulihkan dari Google</>}
-              </button>
-            </div>
+            <span className="font-bold text-sm">Sudah punya data?</span>
           </div>
-        )}
 
-        {step === 2 && (
-          <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-right-8 duration-500">
-            <button onClick={() => setStep(1)} className="mt-8 p-2 w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400">
-              <ChevronLeft size={20} />
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Masukkan <b>ID Pengguna</b> lama Anda untuk memulihkan jadwal obat
+            dari cloud.
+          </p>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={restoreId}
+              onChange={(e) => setRestoreId(e.target.value)}
+              placeholder="ID Pengguna (UUID)"
+              className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"
+            />
+            <button
+              onClick={handleRestore}
+              disabled={isRestoring || !restoreId.trim()}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-center min-w-[80px]"
+            >
+              {isRestoring ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                "Pulihkan"
+              )}
             </button>
-            <div className="pt-12 space-y-8 flex-1">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">Siapa Nama Anda?</h2>
-                <p className="text-slate-500 dark:text-slate-400 font-medium text-lg leading-snug">Agar SeHati bisa menyapa Anda setiap hari.</p>
-              </div>
-              <form onSubmit={handleSubmitName} className="space-y-6">
-                <div className="relative group">
-                  <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-rose-500 transition-colors">
-                    <User size={24} />
-                  </div>
-                  <input autoFocus type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Nama panggilan"
-                    className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 focus:border-rose-500 focus:bg-white dark:focus:bg-slate-800 rounded-3xl py-6 pl-16 pr-6 text-xl font-bold text-slate-800 dark:text-white outline-none shadow-sm transition-all" />
-                </div>
-                
-                <div className="flex items-start gap-3 p-5 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl border border-emerald-100 dark:border-emerald-500/20">
-                  <ShieldCheck size={20} className="text-emerald-600 shrink-0 mt-0.5" />
-                  <p className="text-xs text-emerald-800 dark:text-emerald-400 font-medium leading-snug">
-                    Data Anda aman. Kami tidak membagikan informasi kesehatan Anda kepada siapa pun.
-                  </p>
-                </div>
-              </form>
-            </div>
-            <div className="pb-8">
-              <button onClick={handleSubmitName} disabled={!name.trim()} className="w-full py-5 bg-rose-500 text-white rounded-3xl font-black text-xl shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-30">
-                Selesai & Masuk <ArrowRight size={24} strokeWidth={3} />
-              </button>
-            </div>
           </div>
-        )}
+          {restoreError && (
+            <p className="text-xs text-rose-500 font-bold bg-rose-50 dark:bg-rose-900/20 p-2 rounded-lg">
+              {restoreError}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
