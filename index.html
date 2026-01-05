@@ -1,13 +1,18 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>SeHati - Pengingat Obat</title>
+    <!-- PWA Primary Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SeHati">
     <meta name="theme-color" content="#f43f5e">
     <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3004/3004458.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -17,6 +22,15 @@
             borderRadius: {
               '4xl': '2rem',
               '5xl': '3rem',
+            },
+            keyframes: {
+              'alert-blink': {
+                '0%, 100%': { transform: 'scale(1)', filter: 'brightness(1)' },
+                '50%': { transform: 'scale(1.02)', filter: 'brightness(1.15)' },
+              }
+            },
+            animation: {
+              'alert-blink': 'alert-blink 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
             }
           }
         }
@@ -36,15 +50,35 @@
         ::-webkit-scrollbar { display: none; }
         input:focus { outline: none; }
     </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "zustand": "https://esm.sh/zustand@^5.0.9",
+    "zustand/": "https://esm.sh/zustand@^5.0.9/",
+    "vite": "https://esm.sh/vite@^7.3.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
+  }
+}
+</script>
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="antialiased selection:bg-rose-100">
     <div id="root"></div>
-    <!-- Vite akan secara otomatis memproses index.tsx ini -->
     <script type="module" src="/index.tsx"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration failed:', err));
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(registration => {
+              console.log('SW terdaftar dengan scope:', registration.scope);
+            })
+            .catch(err => console.log('SW registration failed:', err));
         });
       }
     </script>

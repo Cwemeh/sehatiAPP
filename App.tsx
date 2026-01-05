@@ -14,6 +14,9 @@ import { Help } from './screens/Help';
 
 const App: React.FC = () => {
   const settings = useStore((state) => state.settings);
+  const medications = useStore((state) => state.medications);
+  const history = useStore((state) => state.history);
+  const triggerSync = useStore((state) => state.triggerSync);
 
   // Re-apply theme on mount
   useEffect(() => {
@@ -23,6 +26,14 @@ const App: React.FC = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [settings.isDarkMode]);
+
+  // Real-time Cloud Sync Watcher
+  // Every time medications or history change, we update the cloud sync timestamp if enabled.
+  useEffect(() => {
+    if (settings.isCloudSynced && settings.isOnboarded) {
+      triggerSync();
+    }
+  }, [medications, history, settings.isCloudSynced, settings.isOnboarded, triggerSync]);
 
   if (!settings.isOnboarded) {
     return <Onboarding />;

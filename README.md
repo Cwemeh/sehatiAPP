@@ -1,56 +1,68 @@
-# SeHati - Dokumentasi Teknis Pengembangan (v2.0)
 
-SeHati adalah aplikasi Progressive Web App (PWA) manajemen pengingat obat yang dirancang dengan arsitektur modern, mengedepankan privasi (Local-First) dan aksesibilitas tinggi.
+# 🏥 SeHati - Pengingat Obat Pintar & Sahabat Lansia
 
-## 🚀 Arsitektur & Teknologi
-- **Frontend**: React 19 (ESM) dengan TypeScript.
-- **Styling**: Tailwind CSS (Utility-first, responsive, dark mode support).
-- **State Management**: Zustand dengan middleware `persist` (Menggantikan React Context untuk performa lebih baik dan penyimpanan otomatis ke localStorage).
-- **Routing**: React Router 7 (HashRouter).
-- **Icons**: Lucide React.
-- **Offline**: Service Worker (sw.js).
-
-## 📂 Struktur Folder di Komputer (Arsitektur Terbaru)
-Pastikan Anda menyusun file di komputer Anda seperti ini. File `AppContext.tsx` sudah tidak diperlukan lagi:
-
-```text
-sehati-app/
-├── components/
-│   └── Layout.tsx
-├── screens/
-│   ├── AddMedication.tsx
-│   ├── Dashboard.tsx
-│   ├── EditMedication.tsx
-│   ├── Help.tsx
-│   ├── History.tsx
-│   ├── MedicationList.tsx
-│   ├── Onboarding.tsx
-│   └── Settings.tsx
-├── store/
-│   └── useStore.ts
-├── App.tsx
-├── constants.tsx
-├── index.html
-├── index.tsx
-├── manifest.json
-├── metadata.json
-├── README.md
-├── sw.js
-└── types.ts
-```
-
-## 💻 Development
-1. **Install Dependencies**: `npm install`
-2. **Run Application**: `npm run dev`
-3. The application will be available at `http://localhost:5173/`
-
-## 🌍 Panduan Deployment Singkat
-1. **GitHub**: Buat repositori `sehati-app` dan unggah semua file di atas.
-2. **Vercel**: Hubungkan repositori GitHub Anda dan pilih **Framework: Other**.
-3. **PWA**: Buka link dari Vercel di HP, lalu pilih **"Tambah ke Layar Utama"**.
-
-## 🛡️ Catatan Privasi
-Semua data (Nama, Obat, Riwayat) disimpan secara lokal di browser/perangkat pengguna menggunakan `localStorage` melalui mekanisme **Zustand Persist**. Tidak ada data yang dikirim ke server luar.
+**SeHati** adalah aplikasi manajemen pengobatan progresif (PWA) yang dirancang untuk memastikan kepatuhan minum obat dengan cara yang intuitif, aman, dan inklusif. Aplikasi ini mengutamakan aksesibilitas, terutama bagi lansia (Senior Mode).
 
 ---
-**Tips**: Jika Anda sebelumnya memiliki file `storageService.ts` atau `AppContext.tsx`, Anda bisa menghapusnya agar folder proyek Anda tetap bersih dan ringan.
+
+## 🛠️ Panduan Pengembangan (Developer Guide)
+
+Aplikasi ini dibangun menggunakan arsitektur **Modern Single Page Application (SPA)** dengan fokus pada performa dan fungsionalitas offline.
+
+### 1. Arsitektur State Management
+Aplikasi menggunakan **Zustand** (`store/useStore.ts`) sebagai pusat kebenaran (Source of Truth).
+- **Persistensi**: State disimpan secara otomatis di `localStorage` menggunakan middleware persist.
+- **Modul**: State mencakup data obat (`medications`), riwayat (`history`), jadwal yang sudah diambil (`takenSchedules`), alarm yang ditunda (`snoozedAlerts`), dan pengaturan pengguna (`settings`).
+
+### 2. Alur Kerja Penjadwalan & Alarm
+Aplikasi memantau waktu secara real-time untuk memicu alarm:
+- **Checker Loop**: Di dalam `components/Layout.tsx`, terdapat `setInterval` yang berjalan setiap 15 detik.
+- **Logika Deteksi**: Mengecek waktu saat ini terhadap array `schedules` pada setiap obat, dengan mempertimbangkan `frequencyType` (Harian, Hari Spesifik, atau Interval).
+- **Multi-Channel Notification**:
+  - **In-App Overlay**: Muncul pop-up layar penuh dengan suara alarm (`AudioContext`).
+  - **System Notification (PWA)**: Melalui `sw.js` (Service Worker), mengirim notifikasi push ke sistem operasi yang mendukung interaksi langsung (Tombol Sudah Minum/Tunda).
+
+### 3. Alur Kerja Sinkronisasi Awan (Cloud Sync)
+Sinkronisasi menggunakan **Google Drive API v3 (AppData Folder)**.
+- **Keamanan**: Folder AppData bersifat tersembunyi; hanya aplikasi SeHati yang bisa mengakses file cadangan tersebut.
+- **Otentikasi**: Menggunakan Google Identity Services (GIS) untuk mendapatkan `accessToken`.
+- **Auto-Sync**: Setiap kali ada perubahan state (tambah/hapus obat atau riwayat), aplikasi akan memicu upload otomatis jika fitur cloud aktif.
+
+### 4. Sistem Aksesibilitas (Senior Mode)
+Sistem ini bekerja dengan memanfaatkan variabel `isSeniorMode` di dalam state settings.
+- **Visual Scaling**: Tailwind CSS secara kondisional mengubah ukuran teks (misal: `text-base` menjadi `text-xl`) dan ukuran target sentuh (padding dan besar ikon).
+- **Slide to Confirm**: Mekanisme geser (`SlideConfirm` di `screens/Dashboard.tsx`) dirancang untuk mencegah klik yang tidak disengaja oleh pengguna dengan tremor.
+
+---
+
+## 🚀 Fitur Utama & Fungsionalitas
+
+### 1. Manajemen Obat Cerdas
+- **Identitas Visual**: Mendukung pengambilan foto obat dan pemilihan warna kategori (Blue, Emerald, Rose, Amber, Purple, Indigo).
+- **Ikon Adaptif**: Ikon berubah otomatis sesuai jenis sediaan (Tablet, Kapsul, Sirup, Salep, Tetes, Suntik).
+- **Penjadwalan Fleksibel**:
+  - **Daily**: Rutinitas harian.
+  - **Specific Days**: Untuk obat yang tidak dikonsumsi setiap hari.
+  - **Interval**: Menghitung jeda hari berdasarkan tanggal mulai.
+
+### 2. Pengaturan Suara & Vibrasi
+- **Nada Gentle**: Sine wave lembut untuk pengingat yang tidak mengejutkan.
+- **Nada Urgent**: Square wave tegas untuk memastikan kepatuhan.
+- **Silent**: Mode diam dengan getaran (`Vibration API`) jika didukung perangkat.
+
+### 3. Pelacakan Stok & Inventaris
+- **Auto-Deduct**: Stok berkurang otomatis setiap kali obat ditandai "Sudah Minum".
+- **Threshold Alert**: Peringatan visual muncul di Dashboard jika stok berada di bawah batas minimum.
+
+### 4. Ekspor Data Medis
+- Pengguna dapat mengunduh riwayat pengobatan dalam format **CSV** untuk kebutuhan konsultasi dengan dokter atau tenaga medis.
+
+---
+
+## 💻 Tech Stack
+- **Library Utama**: React 19, React Router 7.
+- **Ikon**: Lucide React.
+- **Styling**: Tailwind CSS (Native Dark Mode).
+- **Offline**: Service Worker (PWA).
+
+Dibuat dengan dedikasi untuk meningkatkan kualitas kesehatan keluarga.

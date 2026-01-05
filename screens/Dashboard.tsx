@@ -1,9 +1,91 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { HEALTH_TIPS } from '../constants';
-import { Clock, CheckCircle2, AlertTriangle, Timer, Sun, Moon, CalendarDays, Sunset, SunDim, ChevronDown, ChevronUp } from 'lucide-react';
+import { HEALTH_TIPS, MED_FORMS } from '../constants';
+import { Clock, CheckCircle2, Timer, Sun, Moon, CalendarDays, Sunset, SunDim, ChevronDown, ChevronUp, Pill, ArrowRight, Check, AlertTriangle } from 'lucide-react';
 import { Medication } from '../types';
+
+interface SlideConfirmProps {
+  onConfirm: () => void;
+  label: string;
+  isSeniorMode?: boolean;
+  className?: string;
+}
+
+const SlideConfirm: React.FC<SlideConfirmProps> = ({ onConfirm, label, isSeniorMode, className = "" }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [translateX, setTranslateX] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const startX = useRef(0);
+
+  const handleStart = (clientX: number) => {
+    setIsDragging(true);
+    startX.current = clientX;
+  };
+
+  const handleMove = (clientX: number) => {
+    if (!isDragging || !containerRef.current) return;
+    
+    const containerWidth = containerRef.current.offsetWidth;
+    const handleWidth = isSeniorMode ? 64 : 56;
+    const maxDistance = containerWidth - handleWidth - 12; 
+    
+    let delta = clientX - startX.current;
+    if (delta < 0) delta = 0;
+    if (delta > maxDistance) delta = maxDistance;
+    
+    setTranslateX(delta);
+    
+    if (delta >= maxDistance) {
+      setIsDragging(false);
+      setTranslateX(0);
+      onConfirm();
+      if ('vibrate' in navigator) navigator.vibrate([10, 30, 10]);
+    }
+  };
+
+  const handleEnd = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    setTranslateX(0); 
+  };
+
+  return (
+    <div 
+      ref={containerRef}
+      className={`relative bg-slate-100 dark:bg-slate-800/50 rounded-[40px] p-1.5 flex items-center overflow-hidden touch-none select-none ${isSeniorMode ? 'h-20' : 'h-16 md:h-18'} ${className}`}
+      onTouchStart={(e) => handleStart(e.touches[0].clientX)}
+      onTouchMove={(e) => handleMove(e.touches[0].clientX)}
+      onTouchEnd={handleEnd}
+      onMouseDown={(e) => handleStart(e.clientX)}
+      onMouseMove={(e) => handleMove(e.clientX)}
+      onMouseUp={handleEnd}
+      onMouseLeave={handleEnd}
+    >
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <span className={`font-black uppercase tracking-widest text-slate-300 dark:text-slate-600 transition-opacity ${translateX > 40 ? 'opacity-0' : 'opacity-100'} ${isSeniorMode ? 'text-sm' : 'text-[10px]'}`}>
+          {label}
+        </span>
+      </div>
+
+      <div 
+        style={{ 
+          transform: `translateX(${translateX}px)`,
+          transition: isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.19, 1, 0.22, 1)'
+        }}
+        className={`${isSeniorMode ? 'w-16 h-16' : 'w-13 h-13'} bg-white dark:bg-slate-200 rounded-full shadow-xl flex items-center justify-center text-rose-500 cursor-grab active:cursor-grabbing z-10 transition-colors ${translateX > 50 ? 'text-rose-600' : ''}`}
+      >
+        {translateX > 150 ? <Check size={isSeniorMode ? 32 : 24} strokeWidth={4} /> : <ArrowRight size={isSeniorMode ? 32 : 24} strokeWidth={4} />}
+      </div>
+      
+      <div 
+        className="absolute left-0 top-0 bottom-0 bg-emerald-500/20 pointer-events-none transition-all"
+        style={{ width: `${translateX + (isSeniorMode ? 48 : 40)}px`, borderTopLeftRadius: '40px', borderBottomLeftRadius: '40px' }}
+      />
+    </div>
+  );
+};
 
 export const Dashboard: React.FC = () => {
   const medications = useStore((state) => state.medications);
@@ -18,7 +100,6 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     const randomTip = HEALTH_TIPS[Math.floor(Math.random() * HEALTH_TIPS.length)];
     setTip(randomTip);
-    
     const timer = setInterval(() => setCurrentTime(new Date()), 10000);
     return () => clearInterval(timer);
   }, []);
@@ -42,10 +123,10 @@ export const Dashboard: React.FC = () => {
 
   const getTimeCategory = (time: string) => {
     const hour = parseInt(time.split(':')[0]);
-    if (hour >= 5 && hour < 11) return { label: 'Pagi', icon: <SunDim size={18} className="text-amber-400" />, order: 1 };
-    if (hour >= 11 && hour < 15) return { label: 'Siang', icon: <Sun size={18} className="text-amber-500" />, order: 2 };
-    if (hour >= 15 && hour < 18) return { label: 'Sore', icon: <Sunset size={18} className="text-rose-400" />, order: 3 };
-    return { label: 'Malam', icon: <Moon size={18} className="text-indigo-400" />, order: 4 };
+    if (hour >= 5 && hour < 11) return { label: 'Pagi', icon: <SunDim size={settings.isSeniorMode ? 20 : 18} className="text-amber-400" />, order: 1 };
+    if (hour >= 11 && hour < 15) return { label: 'Siang', icon: <Sun size={settings.isSeniorMode ? 20 : 18} className="text-amber-500" />, order: 2 };
+    if (hour >= 15 && hour < 18) return { label: 'Sore', icon: <Sunset size={settings.isSeniorMode ? 20 : 18} className="text-rose-400" />, order: 3 };
+    return { label: 'Malam', icon: <Moon size={settings.isSeniorMode ? 20 : 18} className="text-indigo-400" />, order: 4 };
   };
 
   const fullTodaySchedule = medications
@@ -69,8 +150,9 @@ export const Dashboard: React.FC = () => {
       groups[key].push(item);
     });
     return Object.entries(groups).sort((a, b) => {
-      return (remainingSchedule.find(i => i.category.label === a[0])?.category.order || 0) - 
-             (remainingSchedule.find(i => i.category.label === b[0])?.category.order || 0);
+      const aOrder = remainingSchedule.find(i => i.category.label === a[0])?.category.order || 0;
+      const bOrder = remainingSchedule.find(i => i.category.label === b[0])?.category.order || 0;
+      return aOrder - bOrder;
     });
   }, [remainingSchedule]);
 
@@ -83,174 +165,170 @@ export const Dashboard: React.FC = () => {
     const target = new Date();
     target.setHours(h, m, 0, 0);
     const diff = target.getTime() - currentTime.getTime();
-    if (diff <= 0) return 'Sekarang!';
+    if (diff <= 0) return 'SEKARANG';
     const diffMin = Math.floor(diff / 60000);
     const diffHour = Math.floor(diffMin / 60);
-    if (diffHour > 0) return `${diffHour}j ${diffMin % 60}m`;
-    return `${diffMin}m`;
+    if (diffHour > 0) return `${diffHour} JAM ${diffMin % 60} MENIT`;
+    return `${diffMin} MENIT LAGI`;
   };
 
+  const lowStockMedications = medications.filter(m => m.stock <= m.lowStockThreshold);
+
   return (
-    <div className="px-6 py-4 space-y-8 animate-in fade-in duration-500">
-      {/* Header Section */}
+    <div className={`animate-in fade-in duration-500 ${settings.isSeniorMode ? 'px-7 py-5 space-y-10' : 'px-6 py-4 space-y-8'}`}>
       <section className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
-             {hours >= 6 && hours < 18 ? <Sun size={18} className="text-amber-500" /> : <Moon size={18} className="text-indigo-400" />}
-             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                {hours < 11 ? "Selamat Pagi" : hours < 15 ? "Selamat Siang" : hours < 18 ? "Selamat Sore" : "Selamat Malam"}
+             {hours >= 6 && hours < 18 ? <Sun size={settings.isSeniorMode ? 20 : 18} className="text-amber-500" /> : <Moon size={settings.isSeniorMode ? 20 : 18} className="text-indigo-400" />}
+             <span className={`font-bold text-slate-400 uppercase tracking-widest ${settings.isSeniorMode ? 'text-xs' : 'text-[10px]'}`}>
+                {hours < 11 ? "Pagi" : hours < 15 ? "Siang" : hours < 18 ? "Sore" : "Malam"}
              </span>
           </div>
-          <h2 className={`font-black text-slate-900 dark:text-white leading-tight ${settings.isSeniorMode ? 'text-3xl' : 'text-2xl'}`}>
-            Halo, {settings.name}!
-          </h2>
+          <h2 className={`font-black text-slate-900 dark:text-white leading-tight ${settings.isSeniorMode ? 'text-3xl' : 'text-2xl'}`}>Halo, {settings.name}!</h2>
         </div>
         <div className="text-right">
-           <div className="text-2xl font-black text-slate-900 dark:text-white">
-              {currentTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-           </div>
-           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-              {currentTime.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' })}
-           </div>
+           <div className={`font-black text-slate-900 dark:text-white ${settings.isSeniorMode ? 'text-3xl' : 'text-xl'}`}>{currentTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
+           <div className={`font-bold text-slate-400 uppercase tracking-tighter ${settings.isSeniorMode ? 'text-[10px]' : 'text-[9px]'}`}>{currentTime.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' })}</div>
         </div>
       </section>
 
-      {/* Hero / Next Dose Section */}
+      {lowStockMedications.length > 0 && (
+        <Link to="/medications" className="block animate-alert-blink">
+          <div className="bg-amber-500 text-white p-4 rounded-[28px] shadow-lg flex items-center gap-4 transition-transform active:scale-95">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+              <AlertTriangle size={24} />
+            </div>
+            <div className="flex-1">
+              <p className="font-black uppercase text-[9px] tracking-widest opacity-80">Peringatan Stok</p>
+              <p className={`font-bold leading-tight ${settings.isSeniorMode ? 'text-lg' : 'text-sm'}`}>
+                {lowStockMedications.length === 1 
+                  ? `${lowStockMedications[0].name} hampir habis!` 
+                  : `${lowStockMedications.length} obat hampir habis!`}
+              </p>
+            </div>
+            <ArrowRight size={20} className="opacity-60" />
+          </div>
+        </Link>
+      )}
+
       {nextDose ? (
-        <div className={`relative overflow-hidden bg-slate-900 dark:bg-rose-500 rounded-[40px] p-8 text-white shadow-2xl transition-all animate-in zoom-in-95 duration-500 ${settings.isSeniorMode ? 'ring-8 ring-rose-500/20' : ''}`}>
-          <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl animate-pulse" />
+        <div className={`relative overflow-hidden bg-slate-900 dark:bg-rose-600 rounded-[40px] shadow-xl transition-all animate-in zoom-in-95 duration-500 ${settings.isSeniorMode ? 'p-8' : 'p-7'}`}>
+          {nextDose.med.image && <div className="absolute inset-0 opacity-20"><img src={nextDose.med.image} className="w-full h-full object-cover" /></div>}
           <div className="relative z-10 space-y-6">
             <div className="flex items-center justify-between">
-              <span className={`font-bold opacity-70 uppercase tracking-[0.2em] ${settings.isSeniorMode ? 'text-sm' : 'text-[10px]'}`}>Tugas Sekarang</span>
-              <div className="px-4 py-1.5 bg-rose-500/30 dark:bg-white/20 rounded-full text-[10px] font-black backdrop-blur-md uppercase border border-white/10">Prioritas</div>
+              <span className={`font-black opacity-80 uppercase tracking-widest ${settings.isSeniorMode ? 'text-sm' : 'text-[10px]'}`}>Berikutnya</span>
+              <div className="px-4 py-1.5 bg-white/20 rounded-full text-[9px] font-black backdrop-blur-md uppercase tracking-widest">Penting</div>
             </div>
-            <div className="space-y-1">
-              <h4 className={`font-black leading-tight ${settings.isSeniorMode ? 'text-4xl' : 'text-3xl'}`}>{nextDose.med.name}</h4>
-              <p className={`font-bold opacity-80 ${settings.isSeniorMode ? 'text-xl' : 'text-sm'}`}>{nextDose.med.dosage}</p>
+            <div className="flex items-center gap-5">
+               <div className={`${settings.isSeniorMode ? 'w-20 h-20' : 'w-16 h-16'} bg-white/10 rounded-3xl overflow-hidden ring-2 ring-white/10 flex items-center justify-center shrink-0`}>
+                {nextDose.med.image ? (
+                  <img src={nextDose.med.image} className="w-full h-full object-cover" />
+                ) : (
+                  MED_FORMS.find(f => f.id === nextDose.med.formType)?.icon || <Pill size={settings.isSeniorMode ? 40 : 32} />
+                )}
+               </div>
+               <div className="space-y-0.5">
+                  <h4 className={`font-black leading-tight ${settings.isSeniorMode ? 'text-4xl' : 'text-2xl'}`}>{nextDose.med.name}</h4>
+                  <p className={`font-bold opacity-80 ${settings.isSeniorMode ? 'text-xl' : 'text-lg'}`}>{nextDose.med.dosage}</p>
+               </div>
             </div>
-            <div className="flex items-center gap-4 pt-2">
-              <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-2xl backdrop-blur-md border border-white/10">
-                <Clock size={18} />
-                <span className="font-bold">{nextDose.time}</span>
+            <div className="flex flex-col gap-2 pt-1">
+              <div className="flex items-center gap-2.5">
+                <Clock size={settings.isSeniorMode ? 24 : 18} /><span className={`font-black ${settings.isSeniorMode ? 'text-2xl' : 'text-xl'}`}>Pukul {nextDose.time}</span>
               </div>
-              <div className="flex items-center gap-2 text-rose-300 dark:text-white font-black">
-                <Timer size={18} className="animate-spin-slow" />
-                <span>{getCountdown(nextDose.time)}</span>
+              <div className="flex items-center gap-2 text-rose-300 dark:text-rose-100 font-black">
+                <Timer size={settings.isSeniorMode ? 22 : 16} className="animate-spin-slow" /><span className={settings.isSeniorMode ? 'text-lg' : 'text-xs'}>{getCountdown(nextDose.time)}</span>
               </div>
             </div>
-            <button 
-              onClick={() => markAsTaken(nextDose.med.id, nextDose.time)}
-              className="w-full py-5 bg-white text-slate-900 dark:text-rose-500 rounded-[28px] font-black text-xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
-            >
-              <CheckCircle2 size={24} /> SUDAH SAYA MINUM
-            </button>
+            
+            <div className="pt-2">
+              <SlideConfirm 
+                label="GESER UNTUK MINUM" 
+                isSeniorMode={settings.isSeniorMode}
+                onConfirm={() => markAsTaken(nextDose.med.id, nextDose.time)}
+                className="bg-white/10 border-2 border-white/20"
+              />
+            </div>
           </div>
         </div>
       ) : fullTodaySchedule.length > 0 ? (
-        <div className="bg-emerald-500 rounded-[40px] p-8 text-white shadow-xl flex items-center gap-5 animate-in slide-in-from-bottom-4 duration-700">
-           <div className="bg-white/20 p-5 rounded-[32px] backdrop-blur-md shadow-inner">
-              <CheckCircle2 size={40} strokeWidth={3} />
-           </div>
-           <div className="space-y-1">
-              <p className="font-black text-2xl leading-none">Hari Selesai!</p>
-              <p className="font-medium opacity-90 text-sm leading-tight">Hebat, semua dosis hari ini sudah terpenuhi dengan baik.</p>
+        <div className="bg-emerald-500 rounded-[40px] p-8 text-white shadow-lg flex items-center gap-5">
+           <div className="bg-white/20 p-5 rounded-3xl backdrop-blur-md shrink-0"><CheckCircle2 size={settings.isSeniorMode ? 48 : 36} strokeWidth={3} /></div>
+           <div className="space-y-0.5">
+              <p className={`font-black leading-none ${settings.isSeniorMode ? 'text-2xl' : 'text-xl'}`}>Hebat!</p>
+              <p className={`font-medium opacity-90 leading-tight ${settings.isSeniorMode ? 'text-base' : 'text-sm'}`}>Semua obat hari ini selesai.</p>
            </div>
         </div>
       ) : (
-        <div className="bg-slate-100 dark:bg-slate-800/50 rounded-[40px] p-12 text-slate-400 dark:text-slate-500 flex flex-col items-center justify-center text-center gap-4 border-4 border-dashed border-slate-200 dark:border-slate-800">
-           <div className="p-6 bg-white dark:bg-slate-800 rounded-full shadow-sm">
-            <CalendarDays size={48} className="opacity-30" />
-           </div>
-           <div>
-              <p className="font-black text-xl text-slate-500 dark:text-slate-400">TIDAK ADA JADWAL</p>
-              <p className="text-xs font-bold uppercase tracking-widest opacity-60">Nikmati hari Anda, tidak ada obat terjadwal hari ini.</p>
-           </div>
+        <div className="bg-slate-100 dark:bg-slate-800/50 rounded-[40px] p-12 text-slate-400 flex flex-col items-center text-center gap-4 border-2 border-dashed border-slate-200 dark:border-slate-800">
+           <CalendarDays size={48} className="opacity-20" />
+           <p className="font-black text-lg text-slate-500 uppercase tracking-widest">Tidak ada jadwal</p>
         </div>
       )}
 
-      {/* Main Schedule List */}
       <section className="space-y-6">
-        <div className="flex items-center justify-between px-1">
-          <h3 className={`font-black text-slate-900 dark:text-white flex items-center gap-2 ${settings.isSeniorMode ? 'text-2xl' : 'text-lg'}`}>
-            Jadwal Tersisa
-          </h3>
-          {remainingSchedule.length > 0 && (
-            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full">
-              {remainingSchedule.length} LAGI
-            </span>
-          )}
-        </div>
-
+        <h3 className={`font-black text-slate-900 dark:text-white flex items-center gap-2 ${settings.isSeniorMode ? 'text-2xl' : 'text-lg'}`}>Jadwal Hari Ini</h3>
         <div className="space-y-10">
-          {remainingSchedule.length === 0 && fullTodaySchedule.length > 0 ? (
-            <div className="text-center py-4 space-y-2 opacity-50">
-               <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Semua Tugas Selesai</p>
-            </div>
-          ) : remainingSchedule.length === 0 ? null : (
-            groupedSchedule.map(([category, items]) => (
-              <div key={category} className="space-y-4 animate-in slide-in-from-right-4 duration-500">
-                <div className="flex items-center gap-3 px-1">
-                   <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center shadow-sm">
-                      {items[0].category.icon}
-                   </div>
-                   <h4 className="font-black text-xs text-slate-400 uppercase tracking-widest">{category}</h4>
-                   <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
-                </div>
-                
-                <div className="space-y-3">
-                  {items.map((item, idx) => (
-                    <div 
-                      key={`${item.med.id}-${item.time}-${idx}`}
-                      className={`group flex items-center gap-4 p-4 rounded-[32px] bg-white dark:bg-slate-800 border-2 border-slate-50 dark:border-slate-700/50 shadow-sm transition-all hover:shadow-md active:scale-[0.98] animate-in fade-in slide-in-from-bottom-2 duration-300`}
-                    >
-                      <div className={`w-14 h-14 rounded-2xl ${item.med.color} flex flex-col items-center justify-center text-white shrink-0 shadow-lg font-black`}>
-                         <span className="text-xs opacity-70 leading-none mb-1">JAM</span>
-                         <span className="text-lg leading-none">{item.time}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-black text-slate-900 dark:text-white truncate ${settings.isSeniorMode ? 'text-2xl' : 'text-base'}`}>{item.med.name}</p>
-                        <p className={`text-slate-500 dark:text-slate-400 font-bold ${settings.isSeniorMode ? 'text-lg' : 'text-xs'}`}>{item.med.dosage}</p>
-                      </div>
-                      <button 
-                        onClick={() => markAsTaken(item.med.id, item.time)}
-                        className={`w-12 h-12 bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 rounded-2xl flex items-center justify-center transition-all hover:bg-emerald-500 hover:text-white active:scale-90`}
-                      >
-                        <CheckCircle2 size={24} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+          {groupedSchedule.map(([category, items]) => (
+            <div key={category} className="space-y-5">
+              <div className="flex items-center gap-3 px-1">
+                 <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-2">{items[0].category.icon}</div>
+                 <h4 className={`font-black text-slate-400 uppercase tracking-widest ${settings.isSeniorMode ? 'text-base' : 'text-xs'}`}>{category}</h4>
+                 <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
               </div>
-            ))
-          )}
+              <div className="space-y-4">
+                {items.map((item, idx) => {
+                  const formOption = MED_FORMS.find(f => f.id === item.med.formType);
+                  return (
+                    <div key={`${item.med.id}-${item.time}-${idx}`} className={`flex flex-col gap-5 p-5 rounded-[40px] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 shadow-md transition-all`}>
+                      <div className="flex items-center gap-4">
+                        <div className={`${settings.isSeniorMode ? 'w-16 h-16' : 'w-14 h-14'} rounded-2xl ${item.med.color} relative overflow-hidden flex flex-col items-center justify-center text-white shrink-0 shadow-md font-black`}>
+                           {item.med.image && <img src={item.med.image} className="absolute inset-0 w-full h-full object-cover opacity-60" />}
+                           <span className="relative z-10 text-[9px] opacity-70 leading-none mb-1">JAM</span>
+                           <span className={`relative z-10 leading-none ${settings.isSeniorMode ? 'text-xl' : 'text-lg'}`}>{item.time}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-black text-slate-900 dark:text-white truncate ${settings.isSeniorMode ? 'text-2xl' : 'text-lg'}`}>{item.med.name}</p>
+                          <div className="flex items-center gap-2 opacity-60 mt-0.5">
+                             <span className="text-slate-500 dark:text-slate-400">{formOption?.icon}</span>
+                             <p className={`text-slate-500 dark:text-slate-400 font-bold ${settings.isSeniorMode ? 'text-lg' : 'text-xs'}`}>{item.med.dosage}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <SlideConfirm 
+                        label="KONFIRMASI" 
+                        isSeniorMode={settings.isSeniorMode}
+                        onConfirm={() => markAsTaken(item.med.id, item.time)}
+                        className="bg-slate-50 dark:bg-slate-900"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Mini Log Section */}
       {takenTodayCount > 0 && (
         <section className="pt-2">
-          <button 
-            onClick={() => setShowTakenToday(!showTakenToday)}
-            className="w-full flex items-center justify-between px-4 py-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border-2 border-transparent hover:border-slate-100 dark:hover:border-slate-800 transition-all"
-          >
+          <button onClick={() => setShowTakenToday(!showTakenToday)} className="w-full flex items-center justify-between px-5 py-4 bg-slate-50 dark:bg-slate-800/30 rounded-[24px]">
             <div className="flex items-center gap-3">
-               <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-500 rounded-lg flex items-center justify-center">
-                  <CheckCircle2 size={16} />
-               </div>
-               <span className="text-sm font-black text-slate-600 dark:text-slate-300">{takenTodayCount} Dosis Diminum Hari Ini</span>
+               <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-500 rounded-lg flex items-center justify-center"><CheckCircle2 size={18} /></div>
+               <span className={`font-black text-slate-600 dark:text-slate-300 ${settings.isSeniorMode ? 'text-lg' : 'text-xs'}`}>{takenTodayCount} Selesai</span>
             </div>
             {showTakenToday ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
           </button>
-          
           {showTakenToday && (
-            <div className="mt-3 space-y-2 px-2 animate-in slide-in-from-top-2 duration-300">
+            <div className="mt-3 space-y-2 px-4 animate-in fade-in slide-in-from-top-2 duration-300">
                {fullTodaySchedule.filter(s => s.isTaken).map((item, i) => (
-                 <div key={i} className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-800 last:border-0 opacity-60">
+                 <div key={i} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0 opacity-60">
                     <div className="flex items-center gap-3">
-                       <div className={`w-2 h-2 rounded-full ${item.med.color.replace('bg-', 'bg-')}`} />
-                       <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{item.med.name}</span>
+                       <div className={`w-2.5 h-2.5 rounded-full ${item.med.color}`} />
+                       <span className={`font-bold text-slate-700 dark:text-slate-200 ${settings.isSeniorMode ? 'text-xl' : 'text-base'}`}>{item.med.name}</span>
                     </div>
-                    <span className="text-[10px] font-black text-slate-400">{item.time}</span>
+                    <span className={`font-black text-slate-400 ${settings.isSeniorMode ? 'text-lg' : 'text-[10px]'}`}>{item.time}</span>
                  </div>
                ))}
             </div>
@@ -258,46 +336,10 @@ export const Dashboard: React.FC = () => {
         </section>
       )}
 
-      {/* Health Tip Section */}
-      <div className="bg-amber-50 dark:bg-amber-900/10 border-2 border-amber-100 dark:border-amber-900/20 rounded-[32px] p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-3">
-           <div className="w-9 h-9 bg-amber-200 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center shadow-sm">
-             <span className="text-xl">💡</span>
-           </div>
-           <h3 className="font-black text-xs text-amber-700 dark:text-amber-400 uppercase tracking-widest">Tips Kesehatan</h3>
-        </div>
-        <p className={`${settings.isSeniorMode ? 'text-2xl' : 'text-base'} leading-relaxed font-bold text-amber-900/80 dark:text-amber-200/80 italic`}>
-          "{tip.tip}"
-        </p>
+      <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 rounded-[40px] p-6 shadow-sm">
+        <h3 className={`font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest mb-2 ${settings.isSeniorMode ? 'text-sm' : 'text-[10px]'}`}>Tips Hari Ini</h3>
+        <p className={`${settings.isSeniorMode ? 'text-xl' : 'text-lg'} font-bold text-amber-900/80 dark:text-amber-200/80 italic leading-snug`}>"{tip.tip}"</p>
       </div>
-
-      {/* Low Stock Warning */}
-      {medications.filter(med => med.stock <= med.lowStockThreshold).length > 0 && (
-        <section className="space-y-4 pt-2">
-          <h3 className={`font-black text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-widest ${settings.isSeniorMode ? 'text-lg' : 'text-xs'}`}>
-            <AlertTriangle size={18} className="text-amber-500" />
-            Persediaan Menipis
-          </h3>
-          <div className="grid grid-cols-1 gap-3">
-            {medications.filter(med => med.stock <= med.lowStockThreshold).map(med => (
-              <div key={med.id} className="bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 p-5 rounded-[32px] flex items-center justify-between shadow-sm animate-pulse">
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-2xl ${med.color} opacity-20 flex items-center justify-center`}>
-                    <AlertTriangle size={24} className="text-slate-900 dark:text-white" />
-                  </div>
-                  <div>
-                    <p className={`font-black text-slate-900 dark:text-white ${settings.isSeniorMode ? 'text-xl' : 'text-base'}`}>{med.name}</p>
-                    <p className={`text-rose-500 font-bold ${settings.isSeniorMode ? 'text-lg' : 'text-xs'}`}>Sisa {med.stock} dosis</p>
-                  </div>
-                </div>
-                <div className="px-4 py-2 bg-amber-100 dark:bg-amber-500/10 rounded-full">
-                  <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase">Isi Ulang</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 };

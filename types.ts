@@ -1,5 +1,6 @@
 
 export type FrequencyType = 'daily' | 'specific_days' | 'interval';
+export type MedicationFormType = 'tablet' | 'capsule' | 'syrup' | 'ointment' | 'drops' | 'injection';
 
 export interface Medication {
   id: string;
@@ -10,9 +11,11 @@ export interface Medication {
   schedules: string[]; 
   color: string;
   frequencyType: FrequencyType;
-  daysOfWeek?: number[]; // 0 = Sunday, 1 = Monday, etc.
-  intervalDays?: number; // e.g., 2 for every 2 days
-  startDate: number; // Timestamp for interval calculation reference
+  formType: MedicationFormType;
+  image?: string; // Base64 thumbnail
+  daysOfWeek?: number[]; 
+  intervalDays?: number; 
+  startDate: number; 
 }
 
 export interface MedicationHistory {
@@ -24,9 +27,9 @@ export interface MedicationHistory {
 }
 
 export interface TakenSchedule {
-  date: string; // YYYY-MM-DD
+  date: string; 
   medicationId: string;
-  time: string; // HH:mm
+  time: string; 
 }
 
 export type NotificationSound = 'gentle' | 'urgent' | 'silent';
@@ -38,13 +41,16 @@ export interface UserSettings {
   isOnboarded: boolean;
   notificationSound: NotificationSound;
   enableVibration: boolean;
+  cloudSyncEmail?: string;
+  isCloudSynced: boolean;
+  lastSyncedAt?: number;
 }
 
 export interface SnoozedAlert {
   medId: string;
   medName: string;
-  time: string; // Original schedule time
-  remindAt: number; // Timestamp of next alert
+  time: string; 
+  remindAt: number; 
 }
 
 export interface HealthTip {

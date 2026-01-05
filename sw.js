@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'sehati-cache-v2';
+const CACHE_NAME = 'sehati-cache-v3.0';
 const ASSETS = ['/', '/index.html'];
 
 self.addEventListener('install', (event) => {
@@ -10,7 +10,11 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
+  event.waitUntil(
+    clients.claim().then(() => {
+      console.log('SeHati SW: Aktif dan siap menangani pengingat.');
+    })
+  );
 });
 
 self.addEventListener('fetch', (event) => {
@@ -19,47 +23,46 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Listener Notifikasi dengan Tombol Aksi
+// Menangani permintaan notifikasi dari aplikasi utama
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { medId, medName, time, image, dosage } = event.data;
+    
     const options = {
-      body: `Jadwal obat: ${event.data.medName}. Segera minum untuk kesehatan Anda!`,
+      body: `Waktunya ${dosage} ${medName} (${time}). Sehat dimulai dari disiplin!`,
       icon: 'https://cdn-icons-png.flaticon.com/512/3004/3004458.png',
       badge: 'https://cdn-icons-png.flaticon.com/512/3004/3004458.png',
-      vibrate: [500, 200, 500, 200, 500, 200, 500],
-      tag: `med-${event.data.medId}`, // Unik per obat
+      image: image || undefined,
+      vibrate: [500, 150, 500, 150, 500],
+      tag: `med-${medId}`, // Mencegah notifikasi menumpuk untuk obat yang sama
       renotify: true,
-      requireInteraction: true, // Notifikasi tidak akan hilang sampai di-swipe/diklik
+      requireInteraction: true,
       actions: [
-        { action: 'taken', title: '✅ SAYA SUDAH MINUM', icon: '' },
-        { action: 'snooze', title: '⏰ TUNDA 10 MENIT', icon: '' }
+        { action: 'taken', title: '✅ SUDAH DIMINUM' },
+        { action: 'snooze', title: '⏰ TUNDA 10 MENIT' }
       ],
-      data: {
-        medId: event.data.medId,
-        medName: event.data.medName,
-        time: event.data.time
-      }
+      data: { medId, medName, time }
     };
 
-    self.registration.showNotification('WAKTUNYA MINUM OBAT!', options);
+    event.waitUntil(
+      self.registration.showNotification('PENGINGAT OBAT SEHATI', options)
+    );
   }
 });
 
-// Menangani klik pada tombol di Notifikasi Popup
+// Menangani klik pada notifikasi atau tombol aksinya
 self.addEventListener('notificationclick', (event) => {
   const { action, notification, data } = event;
   notification.close();
 
   if (action === 'taken') {
-    // Kirim pesan ke aplikasi untuk mencatat riwayat
-    broadcastToClients({ type: 'MED_TAKEN', ...data });
+    event.waitUntil(broadcastToClients({ type: 'MED_TAKEN_FROM_SW', ...data }));
   } else if (action === 'snooze') {
-    // Kirim pesan ke aplikasi untuk mengatur snooze
-    broadcastToClients({ type: 'MED_SNOOZE', ...data });
+    event.waitUntil(broadcastToClients({ type: 'MED_SNOOZE_FROM_SW', ...data }));
   } else {
-    // Jika user klik area notifikasi (bukan tombol), buka aplikasi
+    // Fokus kembali ke aplikasi jika notifikasi diklik biasa
     event.waitUntil(
-      clients.matchAll({ type: 'window' }).then((clientList) => {
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
         if (clientList.length > 0) return clientList[0].focus();
         return clients.openWindow('/');
       })
@@ -67,8 +70,9 @@ self.addEventListener('notificationclick', (event) => {
   }
 });
 
-function broadcastToClients(message) {
-  clients.matchAll().then((clients) => {
-    clients.forEach((client) => client.postMessage(message));
-  });
+async function broadcastToClients(message) {
+  const allClients = await clients.matchAll({ includeUncontrolled: true, type: 'window' });
+  for (const client of allClients) {
+    client.postMessage(message);
+  }
 }
