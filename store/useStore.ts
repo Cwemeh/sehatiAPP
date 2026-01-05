@@ -199,7 +199,7 @@ export const useStore = create<State & Actions>()(
           // Gunakan ID yang diinputkan (untuk restore) atau ID saat ini
           const userIdToFetch = targetUserId || get().settings.userId;
 
-          const { medications } = await supabaseService.fetchUserData(
+          const { medications, history } = await supabaseService.fetchUserData(
             userIdToFetch
           );
 
@@ -233,6 +233,21 @@ export const useStore = create<State & Actions>()(
               })
             );
             set({ medications: mappedMeds });
+
+            // Restore History juga
+            if (history && history.length > 0) {
+              const mappedHistory: MedicationHistory[] = history.map(
+                (h: any) => ({
+                  id: h.id,
+                  medicationId: h.medication_id,
+                  medicationName: h.medication_name,
+                  takenAt: h.taken_at,
+                  dosage: h.dosage,
+                })
+              );
+              set({ history: mappedHistory });
+            }
+
             return true;
           }
           return false;
@@ -250,21 +265,38 @@ export const useStore = create<State & Actions>()(
 
         set({ isSyncing: true });
         try {
-          await supabaseService.syncMedications(
+          const { error: medError } = await supabaseService.syncMedications(
             state.settings.userId,
             state.medications
           );
+
+          if (medError) {
+            console.error("❌ Gagal sinkronisasi obat ke Supabase:", medError);
+            throw medError;
+          }
+
+          // Sync History (BARU)
+          const { error: histError } = await supabaseService.syncHistory(
+            state.settings.userId,
+            state.history
+          );
+          if (histError)
+            console.error("⚠️ Gagal sinkronisasi history:", histError);
+
           if (state.settings.pushToken) {
-            await supabaseService.registerPushToken(
-              state.settings.userId,
-              state.settings.pushToken
-            );
+            const { error: pushError } =
+              await supabaseService.registerPushToken(
+                state.settings.userId,
+                state.settings.pushToken
+              );
+            if (pushError)
+              console.error("⚠️ Gagal sinkronisasi token push:", pushError);
           }
           set((s) => ({
             settings: { ...s.settings, lastSyncedAt: Date.now() },
           }));
         } catch (e) {
-          console.warn("Sinkronisasi Supabase tertunda");
+          console.warn("Sinkronisasi Supabase tertunda/gagal:", e);
         } finally {
           set({ isSyncing: false });
         }

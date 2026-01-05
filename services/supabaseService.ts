@@ -45,6 +45,24 @@ export const supabaseService = {
     return await supabase.from("medications").delete().eq("id", id);
   },
 
+  // History (BARU: Tambahkan ini)
+  syncHistory: async (userId: string, history: any[]) => {
+    if (history.length === 0) return { error: null };
+
+    const { error } = await supabase.from("history").upsert(
+      history.map((h) => ({
+        id: h.id,
+        user_id: userId,
+        medication_id: h.medicationId,
+        medication_name: h.medicationName,
+        taken_at: h.takenAt,
+        dosage: h.dosage,
+      })),
+      { onConflict: "id" }
+    );
+    return { error };
+  },
+
   // Subscriptions
   registerPushToken: async (userId: string, playerId: string) => {
     return await supabase.from("push_subscriptions").upsert(
@@ -64,6 +82,11 @@ export const supabaseService = {
       .eq("user_id", userId)
       .returns<DBMedication[]>(); // Menentukan tipe kembalian di sini
 
-    return { medications };
+    const { data: history } = await supabase
+      .from("history")
+      .select("*")
+      .eq("user_id", userId);
+
+    return { medications, history };
   },
 };
