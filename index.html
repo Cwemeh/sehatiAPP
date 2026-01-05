@@ -105,19 +105,5 @@
   <body class="antialiased selection:bg-rose-100">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
-    <script>
-      // Pendaftaran Service Worker manual diperlukan karena kita menggunakan
-      // file worker custom (OneSignalSDKWorker.js) yang digabung dengan logika PWA.
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker
-            .register("/OneSignalSDKWorker.js", { scope: "/" })
-            .then((registration) => {
-              console.log("SW terdaftar dengan scope:", registration.scope);
-            })
-            .catch((err) => console.log("SW registration failed:", err));
-        });
-      }
-    </script>
   </body>
 </html>
