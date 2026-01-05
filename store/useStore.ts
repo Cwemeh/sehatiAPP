@@ -261,10 +261,14 @@ export const useStore = create<State & Actions>()(
 
       triggerSync: async () => {
         const state = get();
-        
+
         // Debugging Log
-        console.log(`[Sync] Status: ${state.settings.isCloudSynced ? 'ON' : 'OFF'}, UserID: ${state.settings.userId}`);
-        
+        console.log(
+          `[Sync] Status: ${
+            state.settings.isCloudSynced ? "ON" : "OFF"
+          }, UserID: ${state.settings.userId}`
+        );
+
         if (!state.settings.isCloudSynced) return;
 
         set({ isSyncing: true });
@@ -285,7 +289,10 @@ export const useStore = create<State & Actions>()(
             state.history
           );
           if (histError)
-            console.error("⚠️ Gagal sinkronisasi history:", histError);
+            console.error(
+              "⚠️ Gagal sinkronisasi history:",
+              JSON.stringify(histError, null, 2)
+            );
 
           if (state.settings.pushToken) {
             const { error: pushError } =
