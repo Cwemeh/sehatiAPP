@@ -261,6 +261,10 @@ export const useStore = create<State & Actions>()(
 
       triggerSync: async () => {
         const state = get();
+        
+        // Debugging Log
+        console.log(`[Sync] Status: ${state.settings.isCloudSynced ? 'ON' : 'OFF'}, UserID: ${state.settings.userId}`);
+        
         if (!state.settings.isCloudSynced) return;
 
         set({ isSyncing: true });

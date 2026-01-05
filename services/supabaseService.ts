@@ -17,6 +17,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 export const supabaseService = {
   // Medications
   syncMedications: async (userId: string, medications: any[]) => {
+    if (!medications || medications.length === 0) return { error: null };
+
     const { error } = await supabase.from("medications").upsert(
       medications.map((m) => ({
         id: m.id,
@@ -34,7 +36,9 @@ export const supabaseService = {
         color: m.color,
         image_url: m.image,
         form_type: m.formType,
-        start_date: new Date(m.startDate).toISOString(), // Simpan sebagai ISO string
+        start_date: m.startDate
+          ? new Date(m.startDate).toISOString()
+          : new Date().toISOString(), // Fallback aman
       })),
       { onConflict: "id" }
     );
