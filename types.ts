@@ -12,10 +12,30 @@ export interface Medication {
   color: string;
   frequencyType: FrequencyType;
   formType: MedicationFormType;
-  image?: string; // Base64 thumbnail
+  image?: string; 
   daysOfWeek?: number[]; 
   intervalDays?: number; 
   startDate: number; 
+}
+
+// Interface untuk data dari Database (Supabase)
+export interface DBMedication {
+  id: string;
+  user_id: string;
+  name: string;
+  dosage: string;
+  stock: number;
+  threshold: number;
+  schedules: string[];
+  frequency: {
+    type: FrequencyType;
+    days?: number[];
+    interval?: number;
+  };
+  color: string;
+  image_url?: string;
+  form_type?: MedicationFormType;
+  created_at?: string;
 }
 
 export interface MedicationHistory {
@@ -35,15 +55,16 @@ export interface TakenSchedule {
 export type NotificationSound = 'gentle' | 'urgent' | 'silent';
 
 export interface UserSettings {
+  userId: string; // ID unik untuk Supabase
   name: string;
   isDarkMode: boolean;
   isSeniorMode: boolean;
   isOnboarded: boolean;
   notificationSound: NotificationSound;
   enableVibration: boolean;
-  cloudSyncEmail?: string;
   isCloudSynced: boolean;
   lastSyncedAt?: number;
+  pushToken?: string; // OneSignal Player ID
 }
 
 export interface SnoozedAlert {

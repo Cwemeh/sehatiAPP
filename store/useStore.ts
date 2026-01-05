@@ -1,8 +1,8 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Medication, MedicationHistory, TakenSchedule, UserSettings, SnoozedAlert } from '../types';
-import { googleDriveService } from '../services/googleDriveService';
+import { Medication, MedicationHistory, TakenSchedule, UserSettings, SnoozedAlert, DBMedication } from '../types';
+import { supabaseService } from '../services/supabaseService';
 
 interface State {
   medications: Medication[];
@@ -10,7 +10,6 @@ interface State {
   takenSchedules: TakenSchedule[];
   snoozedAlerts: SnoozedAlert[];
   settings: UserSettings;
-  accessToken?: string;
   isSyncing: boolean;
 }
 
@@ -25,7 +24,7 @@ interface Actions {
   completeOnboarding: (name: string) => void;
   clearHistory: () => void;
   triggerSync: () => Promise<void>;
-  connectCloud: () => void;
+  initOneSignal: () => void;
   restoreFromCloud: () => Promise<void>;
   importData: (data: any) => void;
 }
@@ -39,6 +38,7 @@ export const useStore = create<State & Actions>()(
       snoozedAlerts: [],
       isSyncing: false,
       settings: {
+        userId: crypto.randomUUID(), 
         name: '',
         isDarkMode: false,
         isSeniorMode: false,
@@ -63,12 +63,16 @@ export const useStore = create<State & Actions>()(
         get().triggerSync();
       },
 
-      deleteMedication: (id) => {
+      deleteMedication: async (id) => {
         set((state) => ({
           medications: state.medications.filter((m) => m.id !== id),
           takenSchedules: state.takenSchedules.filter((s) => s.medicationId !== id),
           snoozedAlerts: state.snoozedAlerts.filter(s => s.medId !== id),
         }));
+        
+        if (get().settings.isCloudSynced) {
+          await supabaseService.deleteMedication(id);
+        }
         get().triggerSync();
       },
 
@@ -129,6 +133,7 @@ export const useStore = create<State & Actions>()(
         set((state) => ({
           settings: { ...state.settings, name, isOnboarded: true },
         }));
+        get().initOneSignal();
       },
 
       clearHistory: () => {
@@ -136,45 +141,52 @@ export const useStore = create<State & Actions>()(
         get().triggerSync();
       },
 
-      connectCloud: () => {
-        googleDriveService.authenticate(async (token) => {
-          try {
-            const profile = await googleDriveService.getUserProfile(token);
-            set({ accessToken: token });
-            get().updateSettings({ 
-              isCloudSynced: true, 
-              cloudSyncEmail: profile.email,
-              lastSyncedAt: Date.now() 
-            });
-            get().triggerSync();
-          } catch (e) {
-            console.error('Koneksi profil gagal');
-          }
+      initOneSignal: () => {
+        const OneSignal = (window as any).OneSignal;
+        if (!OneSignal) return;
+
+        OneSignal.push(() => {
+          OneSignal.init({
+            appId: "c949f537-55b7-4ac5-989f-6d902b9da084D", 
+            allowLocalhostAsSecureOrigin: true,
+          });
+
+          OneSignal.on('subscriptionChange', (isSubscribed: boolean) => {
+            if (isSubscribed) {
+              OneSignal.getUserId().then((userId: string) => {
+                get().updateSettings({ pushToken: userId });
+                if (get().settings.isCloudSynced) {
+                  supabaseService.registerPushToken(get().settings.userId, userId);
+                }
+              });
+            }
+          });
         });
       },
 
       restoreFromCloud: async () => {
-        let token = get().accessToken;
-        if (!token) {
-          return new Promise<void>((resolve) => {
-            googleDriveService.authenticate(async (t) => {
-              set({ accessToken: t });
-              await get().restoreFromCloud();
-              resolve();
-            });
-          });
-        }
-
         set({ isSyncing: true });
         try {
-          const fileId = await googleDriveService.findBackupFile(token);
-          if (fileId) {
-            const cloudData = await googleDriveService.downloadBackup(token, fileId);
-            get().importData(cloudData);
-            get().updateSettings({ lastSyncedAt: Date.now() });
+          const { medications } = await supabaseService.fetchUserData(get().settings.userId);
+          if (medications) {
+            const mappedMeds: Medication[] = medications.map((m: DBMedication) => ({
+              id: m.id,
+              name: m.name,
+              dosage: m.dosage,
+              stock: m.stock,
+              lowStockThreshold: m.threshold,
+              schedules: m.schedules,
+              color: m.color,
+              frequencyType: m.frequency.type,
+              formType: m.form_type || 'tablet',
+              image: m.image_url,
+              daysOfWeek: m.frequency.days,
+              intervalDays: m.frequency.interval,
+              startDate: Date.now() 
+            }));
+            set({ medications: mappedMeds });
           }
         } catch (e) {
-          set({ accessToken: undefined }); // Token mungkin invalid
           console.error('Gagal restore:', e);
         } finally {
           set({ isSyncing: false });
@@ -183,25 +195,19 @@ export const useStore = create<State & Actions>()(
 
       triggerSync: async () => {
         const state = get();
-        if (!state.settings.isCloudSynced || !state.accessToken) return;
+        if (!state.settings.isCloudSynced) return;
 
         set({ isSyncing: true });
         try {
-          const backupData = {
-            medications: state.medications,
-            history: state.history,
-            takenSchedules: state.takenSchedules,
-            settings: state.settings
-          };
-          await googleDriveService.uploadBackup(state.accessToken, backupData);
+          await supabaseService.syncMedications(state.settings.userId, state.medications);
+          if (state.settings.pushToken) {
+            await supabaseService.registerPushToken(state.settings.userId, state.settings.pushToken);
+          }
           set((s) => ({
             settings: { ...s.settings, lastSyncedAt: Date.now() }
           }));
-        } catch (e: any) {
-          if (e.status === 401) {
-            set({ accessToken: undefined });
-          }
-          console.warn('Sync tertunda');
+        } catch (e) {
+          console.warn('Sinkronisasi Supabase tertunda');
         } finally {
           set({ isSyncing: false });
         }
@@ -217,13 +223,12 @@ export const useStore = create<State & Actions>()(
       }
     }),
     {
-      name: 'sehati-storage-v2.6',
+      name: 'sehati-supabase-storage-v3.0',
       partialize: (state) => ({
         medications: state.medications,
         history: state.history,
         takenSchedules: state.takenSchedules,
         settings: state.settings,
-        accessToken: state.accessToken
       }),
     }
   )
