@@ -31,6 +31,7 @@ interface Actions {
   clearHistory: () => void;
   triggerSync: () => Promise<void>;
   initOneSignal: () => void;
+  requestPermissions: () => Promise<void>;
   restoreFromCloud: (userId?: string) => Promise<boolean>;
   importData: (data: any) => void;
 }
@@ -155,6 +156,15 @@ export const useStore = create<State & Actions>()(
         get().triggerSync();
       },
 
+      requestPermissions: async () => {
+        if (typeof window === "undefined") return;
+        (window as any).OneSignalDeferred =
+          (window as any).OneSignalDeferred || [];
+        (window as any).OneSignalDeferred.push(async (OneSignal: any) => {
+          await OneSignal.Notifications.requestPermission();
+        });
+      },
+
       initOneSignal: () => {
         if (typeof window === "undefined") return;
 
@@ -164,18 +174,25 @@ export const useStore = create<State & Actions>()(
 
         (window as any).OneSignalDeferred.push(async (OneSignal: any) => {
           // Init sudah dilakukan di index.html, kita fokus menangani perubahan subscription
+          console.log("[OneSignal] Initializing listener...");
 
-          const handleSubscriptionChange = () => {
+          const handleSubscriptionChange = async () => {
             // API v16: Mengakses User Push Subscription
             const pushSubscription = OneSignal.User.PushSubscription;
+            console.log(
+              "[OneSignal] Subscription State:",
+              pushSubscription.optedIn,
+              pushSubscription.id
+            );
 
             // Cek apakah user sudah opt-in dan memiliki ID
-            if (pushSubscription.optedIn && pushSubscription.id) {
+            if (pushSubscription.id) {
               const userId = pushSubscription.id;
               get().updateSettings({ pushToken: userId });
 
               if (get().settings.isCloudSynced) {
-                supabaseService.registerPushToken(
+                console.log("[OneSignal] Syncing token to Supabase...");
+                await supabaseService.registerPushToken(
                   get().settings.userId,
                   userId
                 );
