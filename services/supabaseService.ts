@@ -6,6 +6,12 @@ import { DBMedication } from "../types";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error(
+    "⚠️ Supabase URL atau Anon Key hilang. Pastikan file .env atau Environment Variables Vercel sudah diatur."
+  );
+}
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export const supabaseService = {
@@ -28,6 +34,7 @@ export const supabaseService = {
         color: m.color,
         image_url: m.image,
         form_type: m.formType,
+        start_date: new Date(m.startDate).toISOString(), // Simpan sebagai ISO string
       })),
       { onConflict: "id" }
     );

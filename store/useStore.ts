@@ -1,8 +1,14 @@
-
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { Medication, MedicationHistory, TakenSchedule, UserSettings, SnoozedAlert, DBMedication } from '../types';
-import { supabaseService } from '../services/supabaseService';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import {
+  Medication,
+  MedicationHistory,
+  TakenSchedule,
+  UserSettings,
+  SnoozedAlert,
+  DBMedication,
+} from "../types";
+import { supabaseService } from "../services/supabaseService";
 
 interface State {
   medications: Medication[];
@@ -14,7 +20,7 @@ interface State {
 }
 
 interface Actions {
-  addMedication: (med: Omit<Medication, 'id'>) => void;
+  addMedication: (med: Omit<Medication, "id">) => void;
   updateMedication: (med: Medication) => void;
   deleteMedication: (id: string) => void;
   markAsTaken: (medId: string, time: string) => void;
@@ -38,12 +44,12 @@ export const useStore = create<State & Actions>()(
       snoozedAlerts: [],
       isSyncing: false,
       settings: {
-        userId: crypto.randomUUID(), 
-        name: '',
+        userId: crypto.randomUUID(),
+        name: "",
         isDarkMode: false,
         isSeniorMode: false,
         isOnboarded: false,
-        notificationSound: 'urgent',
+        notificationSound: "urgent",
         enableVibration: true,
         isCloudSynced: false,
       },
@@ -66,10 +72,12 @@ export const useStore = create<State & Actions>()(
       deleteMedication: async (id) => {
         set((state) => ({
           medications: state.medications.filter((m) => m.id !== id),
-          takenSchedules: state.takenSchedules.filter((s) => s.medicationId !== id),
-          snoozedAlerts: state.snoozedAlerts.filter(s => s.medId !== id),
+          takenSchedules: state.takenSchedules.filter(
+            (s) => s.medicationId !== id
+          ),
+          snoozedAlerts: state.snoozedAlerts.filter((s) => s.medId !== id),
         }));
-        
+
         if (get().settings.isCloudSynced) {
           await supabaseService.deleteMedication(id);
         }
@@ -90,13 +98,18 @@ export const useStore = create<State & Actions>()(
           dosage: med.dosage,
         };
 
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toISOString().split("T")[0];
 
         set((state) => ({
-          medications: state.medications.map((m) => m.id === medId ? updatedMed : m),
+          medications: state.medications.map((m) =>
+            m.id === medId ? updatedMed : m
+          ),
           history: [newLog, ...state.history],
-          takenSchedules: [...state.takenSchedules, { date: today, medicationId: medId, time }],
-          snoozedAlerts: state.snoozedAlerts.filter(s => s.medId !== medId),
+          takenSchedules: [
+            ...state.takenSchedules,
+            { date: today, medicationId: medId, time },
+          ],
+          snoozedAlerts: state.snoozedAlerts.filter((s) => s.medId !== medId),
         }));
         get().triggerSync();
       },
@@ -105,15 +118,15 @@ export const useStore = create<State & Actions>()(
         const remindAt = Date.now() + 10 * 60 * 1000;
         set((state) => ({
           snoozedAlerts: [
-            ...state.snoozedAlerts.filter(s => s.medId !== medId),
-            { medId, medName, time: originalTime, remindAt }
-          ]
+            ...state.snoozedAlerts.filter((s) => s.medId !== medId),
+            { medId, medName, time: originalTime, remindAt },
+          ],
         }));
       },
 
       clearSnooze: (medId) => {
         set((state) => ({
-          snoozedAlerts: state.snoozedAlerts.filter(s => s.medId !== medId)
+          snoozedAlerts: state.snoozedAlerts.filter((s) => s.medId !== medId),
         }));
       },
 
@@ -121,9 +134,9 @@ export const useStore = create<State & Actions>()(
         set((state) => {
           const updated = { ...state.settings, ...newSettings };
           if (updated.isDarkMode) {
-            document.documentElement.classList.add('dark');
+            document.documentElement.classList.add("dark");
           } else {
-            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.remove("dark");
           }
           return { settings: updated };
         });
@@ -142,52 +155,72 @@ export const useStore = create<State & Actions>()(
       },
 
       initOneSignal: () => {
-        const OneSignal = (window as any).OneSignal;
-        if (!OneSignal) return;
+        if (typeof window === "undefined") return;
 
-        OneSignal.push(() => {
-          OneSignal.init({
-            appId: "c949f537-55b7-4ac5-989f-6d902b9da084D", 
-            allowLocalhostAsSecureOrigin: true,
-          });
+        // Gunakan OneSignalDeferred untuk SDK v16+
+        (window as any).OneSignalDeferred =
+          (window as any).OneSignalDeferred || [];
 
-          OneSignal.on('subscriptionChange', (isSubscribed: boolean) => {
-            if (isSubscribed) {
-              OneSignal.getUserId().then((userId: string) => {
-                get().updateSettings({ pushToken: userId });
-                if (get().settings.isCloudSynced) {
-                  supabaseService.registerPushToken(get().settings.userId, userId);
-                }
-              });
+        (window as any).OneSignalDeferred.push(async (OneSignal: any) => {
+          // Init sudah dilakukan di index.html, kita fokus menangani perubahan subscription
+
+          const handleSubscriptionChange = () => {
+            // API v16: Mengakses User Push Subscription
+            const pushSubscription = OneSignal.User.PushSubscription;
+
+            // Cek apakah user sudah opt-in dan memiliki ID
+            if (pushSubscription.optedIn && pushSubscription.id) {
+              const userId = pushSubscription.id;
+              get().updateSettings({ pushToken: userId });
+
+              if (get().settings.isCloudSynced) {
+                supabaseService.registerPushToken(
+                  get().settings.userId,
+                  userId
+                );
+              }
             }
-          });
+          };
+
+          // Listener untuk perubahan (misal user baru allow notif)
+          OneSignal.User.PushSubscription.addEventListener(
+            "change",
+            handleSubscriptionChange
+          );
+
+          // Jalankan sekali di awal untuk menangkap status saat ini
+          handleSubscriptionChange();
         });
       },
 
       restoreFromCloud: async () => {
         set({ isSyncing: true });
         try {
-          const { medications } = await supabaseService.fetchUserData(get().settings.userId);
+          const { medications } = await supabaseService.fetchUserData(
+            get().settings.userId
+          );
           if (medications) {
-            const mappedMeds: Medication[] = medications.map((m: DBMedication) => ({
-              id: m.id,
-              name: m.name,
-              dosage: m.dosage,
-              stock: m.stock,
-              lowStockThreshold: m.threshold,
-              schedules: m.schedules,
-              color: m.color,
-              frequencyType: m.frequency.type,
-              formType: m.form_type || 'tablet',
-              image: m.image_url,
-              daysOfWeek: m.frequency.days,
-              intervalDays: m.frequency.interval,
-              startDate: Date.now() 
-            }));
+            const mappedMeds: Medication[] = medications.map(
+              (m: DBMedication) => ({
+                id: m.id,
+                name: m.name,
+                dosage: m.dosage,
+                stock: m.stock,
+                lowStockThreshold: m.threshold,
+                schedules: m.schedules,
+                color: m.color,
+                frequencyType: m.frequency.type,
+                formType: m.form_type || "tablet",
+                image: m.image_url,
+                daysOfWeek: m.frequency.days,
+                intervalDays: m.frequency.interval,
+                startDate: new Date((m as any).start_date).getTime(), // Pulihkan dari DB
+              })
+            );
             set({ medications: mappedMeds });
           }
         } catch (e) {
-          console.error('Gagal restore:', e);
+          console.error("Gagal restore:", e);
         } finally {
           set({ isSyncing: false });
         }
@@ -199,15 +232,21 @@ export const useStore = create<State & Actions>()(
 
         set({ isSyncing: true });
         try {
-          await supabaseService.syncMedications(state.settings.userId, state.medications);
+          await supabaseService.syncMedications(
+            state.settings.userId,
+            state.medications
+          );
           if (state.settings.pushToken) {
-            await supabaseService.registerPushToken(state.settings.userId, state.settings.pushToken);
+            await supabaseService.registerPushToken(
+              state.settings.userId,
+              state.settings.pushToken
+            );
           }
           set((s) => ({
-            settings: { ...s.settings, lastSyncedAt: Date.now() }
+            settings: { ...s.settings, lastSyncedAt: Date.now() },
           }));
         } catch (e) {
-          console.warn('Sinkronisasi Supabase tertunda');
+          console.warn("Sinkronisasi Supabase tertunda");
         } finally {
           set({ isSyncing: false });
         }
@@ -218,18 +257,23 @@ export const useStore = create<State & Actions>()(
           medications: data.medications || state.medications,
           history: data.history || state.history,
           takenSchedules: data.takenSchedules || state.takenSchedules,
-          settings: { ...state.settings, ...data.settings, isOnboarded: true }
+          settings: { ...state.settings, ...data.settings, isOnboarded: true },
         }));
-      }
+      },
     }),
     {
-      name: 'sehati-supabase-storage-v3.0',
+      name: "sehati-supabase-storage-v3.0",
       partialize: (state) => ({
         medications: state.medications,
         history: state.history,
         takenSchedules: state.takenSchedules,
         settings: state.settings,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state && state.settings.isOnboarded) {
+          state.initOneSignal();
+        }
+      },
     }
   )
 );

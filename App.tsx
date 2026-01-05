@@ -1,29 +1,29 @@
-
-import React, { useEffect } from 'react';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
-import { useStore } from './store/useStore';
-import { Layout } from './components/Layout';
-import { Dashboard } from './screens/Dashboard';
-import { MedicationList } from './screens/MedicationList';
-import { AddMedication } from './screens/AddMedication';
-import { EditMedication } from './screens/EditMedication';
-import { History } from './screens/History';
-import { Settings } from './screens/Settings';
-import { Onboarding } from './screens/Onboarding';
-import { Help } from './screens/Help';
+import React, { useEffect } from "react";
+import { HashRouter as Router, Routes, Route } from "react-router-dom";
+import { useStore } from "./store/useStore";
+import { Layout } from "./components/Layout";
+import { Dashboard } from "./screens/Dashboard";
+import { MedicationList } from "./screens/MedicationList";
+import { AddMedication } from "./screens/AddMedication";
+import { EditMedication } from "./screens/EditMedication";
+import { History } from "./screens/History";
+import { Settings } from "./screens/Settings";
+import { Onboarding } from "./screens/Onboarding";
+import { Help } from "./screens/Help";
 
 const App: React.FC = () => {
   const settings = useStore((state) => state.settings);
   const medications = useStore((state) => state.medications);
   const history = useStore((state) => state.history);
   const triggerSync = useStore((state) => state.triggerSync);
+  const initOneSignal = useStore((state) => state.initOneSignal);
 
   // Re-apply theme on mount
   useEffect(() => {
     if (settings.isDarkMode) {
-      document.documentElement.classList.add('dark');
+      document.documentElement.classList.add("dark");
     } else {
-      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.remove("dark");
     }
   }, [settings.isDarkMode]);
 
@@ -33,7 +33,18 @@ const App: React.FC = () => {
     if (settings.isCloudSynced && settings.isOnboarded) {
       triggerSync();
     }
-  }, [medications, history, settings.isCloudSynced, settings.isOnboarded, triggerSync]);
+  }, [
+    medications,
+    history,
+    settings.isCloudSynced,
+    settings.isOnboarded,
+    triggerSync,
+  ]);
+
+  // Inisialisasi OneSignal saat aplikasi dibuka
+  useEffect(() => {
+    initOneSignal();
+  }, [initOneSignal]);
 
   if (!settings.isOnboarded) {
     return <Onboarding />;
