@@ -257,7 +257,7 @@ export const useStore = create<State & Actions>()(
                 id: h.id,
                 medicationId: h.medication_id,
                 medicationName: h.medication_name,
-                takenAt: h.taken_at,
+                takenAt: new Date(h.taken_at).getTime(), // Konversi dari ISO String (DB) ke Timestamp (App)
                 dosage: h.dosage,
               }));
             }
@@ -307,10 +307,16 @@ export const useStore = create<State & Actions>()(
           }
 
           // Sync History (BARU)
-          // Pastikan tabel 'history' di Supabase memiliki kolom 'medication_name'
+          // Konversi timestamp ke ISO String agar diterima PostgreSQL (Supabase)
+          // dan hindari error "date/time field value out of range"
+          const historyPayload = state.history.map((h) => ({
+            ...h,
+            takenAt: new Date(h.takenAt).toISOString(),
+          }));
+
           const { error: histError } = await supabaseService.syncHistory(
             state.settings.userId,
-            state.history
+            historyPayload as any
           );
           if (histError)
             console.error(
