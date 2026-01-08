@@ -1,6 +1,0 @@
-{
-  "css.lint.unknownAtRules": "ignore",
-  "deno.enable": true,
-  "deno.enablePaths": ["supabase"],
-  "deno.unstable": true
-}
