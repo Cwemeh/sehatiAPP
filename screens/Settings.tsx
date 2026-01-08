@@ -30,6 +30,24 @@ export const Settings: React.FC = () => {
   const clearHistory = useStore((state) => state.clearHistory);
   const restoreFromCloud = useStore((state) => state.restoreFromCloud);
   const initOneSignal = useStore((state) => state.initOneSignal);
+  const [osId, setOsId] = useState<string>("Memuat...");
+
+  useEffect(() => {
+    // 🔄 Sync status OneSignal saat halaman dibuka
+    window.OneSignal.push(() => {
+      const user = window.OneSignal.User;
+      const isSubscribed = user?.PushSubscription?.optedIn;
+      const token = user?.PushSubscription?.id;
+
+      console.log("🆔 OneSignal Subscription ID:", token);
+      setOsId(token || "Belum ada (Klik Aktifkan)");
+
+      if (isSubscribed && token && settings.pushToken !== token) {
+        console.log("Syncing OneSignal Token:", token);
+        updateSettings({ pushToken: token });
+      }
+    });
+  }, []);
 
   const [copied, setCopied] = useState(false);
 
@@ -50,6 +68,20 @@ export const Settings: React.FC = () => {
       return;
     await restoreFromCloud();
     alert("Data berhasil dipulihkan!");
+  };
+
+  const enableNotifications = () => {
+    window.OneSignal.push(() => {
+      console.log("OneSignal SDK Ready. Showing prompt...");
+      window.OneSignal.showSlidedownPrompt().then(() => {
+        // Cek hasil setelah prompt ditutup/diterima
+        const token = window.OneSignal.User?.PushSubscription?.id;
+        if (token) {
+          setOsId(token);
+          updateSettings({ pushToken: token });
+        }
+      });
+    });
   };
 
   const soundOptions: { id: NotificationSound; label: string; desc: string }[] =
@@ -288,12 +320,17 @@ export const Settings: React.FC = () => {
             </div>
             {!settings.pushToken && (
               <button
-                onClick={initOneSignal}
+                onClick={enableNotifications}
                 className="px-4 py-2 bg-rose-500 text-white rounded-xl font-black text-[10px] uppercase shadow-md active:scale-95 transition-all"
               >
                 AKTIFKAN
               </button>
             )}
+          </div>
+          <div className="px-2">
+            <p className="text-[10px] text-slate-400 font-mono break-all">
+              Debug ID: {osId}
+            </p>
           </div>
         </section>
 
